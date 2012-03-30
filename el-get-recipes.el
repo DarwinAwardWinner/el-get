@@ -74,7 +74,7 @@ when this custom is nil.
 If the file is a literate file create in Org Mode it will
 automatically create a .el as needed based on file modification
 times and load it.  If the file is a traditional elisp file it
-will compile it and load the compiled version."
+will load it directly."
   (when el-get-user-package-directory
     ;; Match the package against the extension to determine which
     ;; command to use when loading it.
