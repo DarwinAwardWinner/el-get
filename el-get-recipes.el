@@ -58,13 +58,22 @@ one found is used."
   :group 'el-get
   :type '(repeat (string)))
 
-(defcustom el-get-user-package-plain-type
+(defcustom el-get-user-package-el-type
   (list "el.gpg.bz2" "el.gpg.gz" "el.gpg" "el.bz2" "el.gz" "el")
   "Define the .el* file extensions to look for when loading user
 init files.  The extensions are matched in the order listed and
 the first one found is used."
   :group 'el-get
   :type '(repeat (string)))
+
+(defun el-get-user-package-org-load (package)
+  "Function for loading user customizations stored as .org*"
+  (or (ignore-errors (org-babel-load-file package))
+      (eval-after-load 'org-install `(org-babel-load-file ,package))))
+
+(defun el-get-user-package-el-load (package)
+  "Function for loading user customizations stored as .el*"
+  (load-file package))
 
 (defun el-get-load-package-user-init-file (package)
   "Load the user init file for PACKAGE, called init-package.el
@@ -87,15 +96,15 @@ will load it directly."
                nil)))
       (let* ((package-name (format "init-%s" package))
              (base (expand-file-name package-name el-get-user-package-directory))
-             (org-type-load 'org-babel-load-file)
-             (plain-type-load 'load-file)
+             (org-type-load 'el-get-user-package-org-load)
+             (el-type-load 'el-get-user-package-el-load)
              ;; By preferring .org files over .el files you ensure
              ;; that changes to the .org files will be taken into
              ;; account and a new .el file will be tangled to reflect
              ;; those changes.
              (load-method (or
                            (package-load base el-get-user-package-org-type org-type-load)
-                           (package-load base el-get-user-package-plain-type plain-type-load))))
+                           (package-load base el-get-user-package-el-type el-type-load))))
         ;; Perform load evalation here
         (if load-method
             (progn
