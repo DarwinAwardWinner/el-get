@@ -58,3 +58,7 @@ Test to ensure that the file has loaded
   (el-get 'sync 'org-mode)
   (assert (boundp 'test:el-get-literate-config) nil
           "Literate user config file should be loaded."))
+
+;; TODO:
+;; Test when a package has both .el and .org init files.
+;; Ensure a warning is generated if org-mode is not available?
