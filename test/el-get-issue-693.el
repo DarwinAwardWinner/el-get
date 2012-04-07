@@ -42,9 +42,19 @@ Test to ensure that the file has loaded
 "))
 
 (el-get 'sync 'regular-config-pkg 'literate-config-pkg)
-;; (require 'regular-config-pkg)
-;; (require 'literate-config-pkg)
+
 (assert (bound-and-true-p test:el-get-regular-config) nil
-        "Regular user config file was loaded.")
-(assert (bound-and-true-p test:el-get-literate-config) nil
-        "Literate user config file was loaded.")
+        "Regular user config file should be loaded.")
+
+(require 'find-func)
+(if (ignore-errors (find-library-name "ob-tangle"))
+    (progn
+      ;; Emacs 24 and up (org-mode built in)
+      (assert (boundp 'test:el-get-literate-config) nil
+              "Literate user config file should be loaded."))
+  ;; Emacs 23 and lower
+  (assert (not (boundp 'test:el-get-literate-config)) nil
+          "Literate user config should not be loaded yet, because org-mode is unavailable")
+  (el-get 'sync 'org-mode)
+  (assert (boundp 'test:el-get-literate-config) nil
+          "Literate user config file should be loaded."))
