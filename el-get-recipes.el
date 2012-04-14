@@ -68,8 +68,9 @@ the first one found is used."
 
 (defun el-get-user-package-org-load (package)
   "Function for loading user customizations stored as .org*"
-  (or (ignore-errors (org-babel-load-file package))
-      (eval-after-load 'org-install `(org-babel-load-file ,package))))
+  (condition-case nil
+      (org-babel-load-file package)
+    (error (eval-after-load 'org-install `(org-babel-load-file ,package)))))
 
 (defun el-get-user-package-el-load (package)
   "Function for loading user customizations stored as .el*"
