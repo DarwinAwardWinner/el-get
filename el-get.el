@@ -974,7 +974,12 @@ already installed packages is considered."
         (progress-reporter-done progress))
 
       ;; now is a good time to care about autoloads
-      (el-get-eval-autoloads))))
+      (el-get-eval-autoloads))
+
+    ;; Now that package loading is complete, check that .org user init
+    ;; files were loaded and not simply left waiting for
+    ;; 'org-install to be required.
+    (el-get-user-package-org-check)))
 
 (provide 'el-get)
 

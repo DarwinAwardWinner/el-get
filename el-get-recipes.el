@@ -66,14 +66,33 @@ the first one found is used."
   :group 'el-get
   :type '(repeat (string)))
 
+(defvar el-get-user-package-org-pending 'nil
+  "Used to track whether org needs to be loaded for user
+  init files to finish being initialized.")
+
 (defun el-get-user-package-org-load (package)
-  "Function for loading user customizations stored as .org*"
+  "Function for loading user init files stored as .org*"
   (condition-case nil
       (org-babel-load-file package)
-    (error (eval-after-load 'org-install `(org-babel-load-file ,package)))))
+    (error (eval-after-load 'org-install `(org-babel-load-file ,package))
+           (setq el-get-user-package-org-pending 't))))
+
+(defun el-get-user-package-org-check ()
+  "Check to see if any user init files are waiting on org-install.
+
+If 'nil then either `org-babel-load-file' is available, or no
+user init files are .org*.  If 't then notify user that
+org is not yet loaded."
+  (when el-get-user-package-org-pending
+    ;; Check to see if org-install was required after (eval-after-load
+    ;; 'org-install) was called.
+    (unless (featurep 'org-install)
+      (el-get-notify "Loading of user init files incomplete"
+                     "Add Org-Mode to path and run
+`(require 'org-install)' to complete initialization."))))
 
 (defun el-get-user-package-el-load (package)
-  "Function for loading user customizations stored as .el*"
+  "Function for loading user init files stored as .el*"
   (load-file package))
 
 (defun el-get-load-package-user-init-file (package)
