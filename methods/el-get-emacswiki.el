@@ -31,10 +31,74 @@ filename.el ;;; filename.el --- description"
   :group 'el-get
   :type 'string)
 
+(defvar el-get-emacswiki-download-queue-active nil)
+(defvar el-get-emacswiki-download-queue nil)
+(defvar el-get-emacswiki-download-interval 2)
+
+(defun el-get-emacswiki-download-queue-run ()
+  (when (not el-get-emacswiki-download-queue-active)
+    (setq el-get-emacswiki-download-queue-active t)
+    (message "%s: Starting queue" (current-time-string))
+    (el-get-emacswiki-download-queue-step)))
+
+(defun el-get-emacswiki-download-queue-finish ()
+  (message "%s: Finished queue" (current-time-string))
+  (setq el-get-emacswiki-download-queue-active nil))
+
+(defun el-get-emacswiki-download-queue-step ()
+  (if el-get-emacswiki-download-queue
+      (let* ((next-job (pop el-get-emacswiki-download-queue))
+	     (name (first next-job))
+	     (func (second next-job))
+	     (args (third next-job)))
+	(message "%s: Running job %s" (current-time-string) name)
+	(ignore-errors (apply func args))
+	(run-with-timer el-get-emacswiki-download-interval nil
+                        'el-get-emacswiki-download-queue-step))
+    (el-get-emacswiki-download-queue-finish)))
+
+(defun el-get-emacswiki-download-enqueue (name function &rest args)
+  (message "Enqueuing job %s" name)
+  (setq el-get-emacswiki-download-queue
+        (nconc el-get-emacswiki-download-queue
+               (list (list name function args))))
+  (el-get-emacswiki-download-queue-run))
+
+(defvar el-get-emacswiki-next-allowed-download-time (current-time))
+
+(defun el-get-emacswiki-sync-wait-until (time)
+  (when (time-less-p (current-time) time)
+    (let* ((time-to-wait (time-subtract time (current-time)))
+           (high-seconds-to-wait (first time-to-wait))
+           (seconds-to-wait (second time-to-wait))
+           (milliseconds-to-wait (third time-to-wait))
+           (time-to-wait (+ seconds-to-wait
+                            (/ milliseconds-to-wait 1000000.0))))
+      (when (> high-seconds-to-wait 0)
+        (error "Cannot wait longer than 2**16 seconds."))
+      (message "%s: Sleeping for %s seconds to honor EmacsWiki rate limit"
+               (current-time-string) time-to-wait)
+      (sleep-for time-to-wait)
+      (message "%s: Done sleeping" (current-time-string)))))
+
 (defun el-get-emacswiki-install (package url post-install-fun)
   "Download a single-file PACKAGE over HTTP from emacswiki."
   (let ((url (or url (format "%s%s.el" el-get-emacswiki-base-url package))))
-    (el-get-http-install package url post-install-fun)))
+    (if el-get-default-process-sync
+        ;; Sync: use `sleep-for'
+        (progn
+          (el-get-emacswiki-sync-wait-until
+           el-get-emacswiki-next-allowed-download-time)
+          (el-get-http-install
+           package url
+           `(lambda (package)
+              (setq el-get-emacswiki-next-allowed-download-time
+                    (time-add (current-time)
+                              '(0 ,el-get-emacswiki-download-interval)))
+              (funcall ',post-install-fun package))))
+      ;; Async: use queue
+      (el-get-emacswiki-download-enqueue package 'el-get-http-install
+                                         package url post-install-fun))))
 
 (defun el-get-emacswiki-guess-website (package)
   (format "%s%s.el" el-get-emacswiki-base-url package))
