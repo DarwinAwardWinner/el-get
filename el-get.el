@@ -963,29 +963,18 @@ already installed packages is considered."
 	  (loop for p in packages when (listp p) append p else collect p))
          (total       (length packages))
          (installed   (el-get-count-packages-with-status packages "installed"))
-         (wait (eq sync 'wait))
-         (progress (and wait
-                        (make-progress-reporter
-			 "Waiting for `el-get' to complete... "
-			 0 (- total installed) 0)))
-         ;; In the wait case, we actually want the installation to be
-         ;; async, so set `sync' to nil.
-         (sync (if wait nil sync))
+         ;; Only allow nil and 'sync, not 'wait
+         (sync (cond ((eq sync 'wait)
+                      (warn "Wait mode is no longer supported. Use either nil or 'sync.")
+                      'sync)
+                     (sync 'sync)
+                     ((null sync) nil)))
          (el-get-default-process-sync sync))
 
     ;; keep the result of `el-get-init-and-install' to return it even in the
-    ;; 'wait case
+    ;; async case
     (prog1
 	(el-get-init-and-install (mapcar 'el-get-as-symbol packages))
-
-      ;; el-get-install is async, that's now ongoing.
-      (when wait
-        (while (> (- total installed) 0)
-          (sleep-for 0.2)
-          ;; don't forget to account for installation failure
-          (setq installed (el-get-count-packages-with-status packages "installed" "required"))
-          (progress-reporter-update progress (- total installed)))
-        (progress-reporter-done progress))
 
       ;; now is a good time to care about autoloads
       (el-get-eval-autoloads))))
