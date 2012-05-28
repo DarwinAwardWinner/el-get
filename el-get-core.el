@@ -354,8 +354,9 @@ makes it easier to conditionally splice a command into the list.
                (cbuf    (plist-get c :buffer-name))
                (killed  (when (get-buffer cbuf) (kill-buffer cbuf)))
                (filter  (plist-get c :process-filter))
-               (program (plist-get c :program))
                (shell   (plist-get c :shell))
+               (program (funcall (if shell 'shell-quote-argument 'identity)
+                                 (plist-get c :program)))
                (args    (if shell
 			    (mapcar #'shell-quote-argument (plist-get c :args))
 			  (plist-get c :args)))
