@@ -206,6 +206,7 @@
 (require 'el-get-notify)		; notification support (dbus, growl...)
 (require 'el-get-list-packages)		; menu and `el-get-describe' facilities
 (require 'el-get-autoloads)		; manages updating el-get's loaddefs.el
+(require 'el-get-protect)               ; Protect package from user modification
 
 ;;
 ;; And then define some more code-level customs.  They stay here so that
