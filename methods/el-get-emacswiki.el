@@ -117,7 +117,9 @@ this with a prefix arg (noninteractively: set optional arg
       (progn
         (el-get-emacswiki-build-local-recipes target-dir)
         (el-get-notify "el-get: EmacsWiki"
-                       "EmacsWiki local recipe list refreshed"))
+                       "EmacsWiki local recipe list refreshed")
+        ;; Return nil because there is no subprocess created
+        nil)
     (let* ((name "*el-get-emacswiki*")
            (dummy (when (get-buffer name) (kill-buffer name)))
            (args
@@ -136,6 +138,7 @@ this with a prefix arg (noninteractively: set optional arg
        '(lambda (proc event)
           (when (eq (process-status proc) 'exit)
             (el-get-notify "el-get: EmacsWiki"
-                           "EmacsWiki local recipe list refreshed")))))))
+                           "EmacsWiki local recipe list refreshed"))))
+      process)))
 
 (provide 'el-get-emacswiki)
