@@ -122,16 +122,20 @@ this with a prefix arg (noninteractively: set optional arg
         nil)
     (let* ((name "*el-get-emacswiki*")
            (dummy (when (get-buffer name) (kill-buffer name)))
+           (el-get-lib-dir
+            (file-name-directory (symbol-file 'el-get 'defun)))
+           (el-get-emacswiki-file
+            (file-name-sans-extension
+             (symbol-file 'el-get-emacswiki-build-local-recipes 'defun)))
            (args
-            (format
-             "-Q -batch -L %s -L %s -l %s -f el-get-emacswiki-build-local-recipes %s"
-             (el-get-package-directory 'el-get)
-             (expand-file-name "methods" (el-get-package-directory 'el-get))
-             (file-name-sans-extension
-              (symbol-file 'el-get-emacswiki-build-local-recipes 'defun))
-             target-dir))
+            (list "-Q" "-batch"
+                  "-L" el-get-lib-dir
+                  "-L" (expand-file-name "methods" el-get-lib-dir)
+                  "-l" el-get-emacswiki-file
+                  "-f" "el-get-emacswiki-build-local-recipes"
+                  target-dir))
            (process
-            (apply 'start-process name name el-get-emacs (split-string args))))
+            (apply 'start-process name name el-get-emacs args)))
       (message "%s %s" el-get-emacs args)
       (set-process-sentinel
        process
