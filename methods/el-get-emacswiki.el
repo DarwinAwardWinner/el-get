@@ -74,7 +74,11 @@ filename.el ;;; filename.el --- description"
 (defun el-get-emacswiki-build-local-recipes (&optional target-dir)
   "retrieve the index of elisp pages at emacswiki and turn them
 into a local recipe file set"
-  (interactive)
+  (interactive
+   (list (let ((dummy (unless (file-directory-p el-get-recipe-path-emacswiki)
+			(make-directory el-get-recipe-path-emacswiki 'recursive))))
+	   (read-directory-name "emacswiki recipes go to: "
+				el-get-recipe-path-emacswiki))))
   (let ((target-dir (or target-dir
 			(car command-line-args-left)
 			el-get-recipe-path-emacswiki))
@@ -105,7 +109,7 @@ this with a prefix arg (noninteractively: set optional arg
 `in-process' non-nil)."
   (interactive
    (list (let ((dummy (unless (file-directory-p el-get-recipe-path-emacswiki)
-			(make-directory el-get-recipe-path-emacswiki))))
+			(make-directory el-get-recipe-path-emacswiki 'recursive))))
 	   (read-directory-name "emacswiki recipes go to: "
 				el-get-recipe-path-emacswiki))
          current-prefix-arg))
