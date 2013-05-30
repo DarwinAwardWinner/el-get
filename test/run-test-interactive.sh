@@ -37,7 +37,7 @@ run_test () {
     mkdir -p "$TEST_HOME"/.emacs.d/el-get/
     HOME="$TEST_HOME" "$EMACS" -Q -L "$EL_GET_LIB_DIR" \
       -l "$EL_GET_LIB_DIR/el-get.el" -l "$EL_GET_LIB_DIR/test/test-setup.el" \
-      -l "$testfile"
+      "$testfile" -l "$testfile"
   fi
 }
 
