@@ -31,9 +31,9 @@ add_on_exit ()
     fi
 }
 
-set_default EL_GET_LIB_DIR "$(dirname "$(dirname "$(readlink -f "$0")")")"
-set_default TMPDIR "$(dirname "$(mktemp --dry-run)")"
-set_default TEST_HOME "$TMPDIR/el-get-test-home"
+set_default EL_GET_LIB_DIR "$(dirname "$(cd "$(dirname "$0")"; pwd)")"
+set_default TEMPDIR "$(mktemp -d -t el-get-test)"
+set_default TEST_HOME "$TEMPDIR/home"
 set_default EMACS "$(which emacs)"
 
 # 5 seconds in between tests to avoid accidental DoS from running too
@@ -58,12 +58,11 @@ test_recipe () {
     return
   fi
   echo "*** Testing el-get recipe $recipe_file ***"
-  mkdir -p "$TEST_HOME"/.emacs.d
   if [ -n "$DO_NOT_CLEAN" ]; then
-    echo "Running test without removing $TEST_HOME first";
+      echo "Not deleting $TEST_HOME after test completion";
   else
-    add_on_exit "rm -rf $TEST_HOME"
-    rm -rf "$TEST_HOME"
+      add_on_exit "rm -rf $TEMPDIR"
+      rm -rf "$TEMPDIR"
   fi
   mkdir -p "$TEST_HOME"/.emacs.d/el-get/
   TMPDIR="$TEST_HOME"
