@@ -1,0 +1,13 @@
+# Task hierarchy
+
+This rewrite is happening from the bottom up, so things need to be
+written in a certain order before other higher layers can be written.
+
+* Install Methods
+* Recipe I/O
+* Recipe transformers
+* Async package fetching (just file method first, I guess)
+* Async package unpacking
+* Async package installation
+* Async package building
+* Async package init in batch emacs (for verifying successful install)
