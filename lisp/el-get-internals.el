@@ -47,3 +47,30 @@ this function."
   "Convert HASH to an equivalent plist."
   (let (plist)
     (maphash (lambda (k v) (plist-put plist k v)) hash)))
+
+(defun el-get-plist-get-nodef (plist prop)
+  "Like `plist-get' but signals an error unless PLIST contains PROP."
+  (or (plist-get plist prop)
+      (error "Property list does not contain property %s" prop)))
+
+(defun el-get--substitute-keywords (plist expr)
+  "Replace all keywords in EXPR with their values from PLIST.
+
+If a keyword in EXPR is missing from PLIST, it will be replaced
+with nil."
+  (cond
+   ((keywordp expr)
+    (plist-get plist expr))
+   ((consp expr)
+    (cons (el-get--substitute-keywords plist (car expr))
+          (el-get--substitute-keywords plist (cdr expr))))
+   (expr)))
+
+(defmacro el-get-plist-bind (plist &rest body)
+  "Eval BODY after replacing all keywords with their values in PLIST.
+
+Effectively, all keywords in BODY become variables that are
+looked up in PLIST. Keywords not present in PLIST are replaced by nil"
+  (let ((body (cons 'progn body)))
+    (el-get--substitute-keywords (eval plist) body)))
+(put 'el-get-plist-bind 'lisp-indent-function 1)
