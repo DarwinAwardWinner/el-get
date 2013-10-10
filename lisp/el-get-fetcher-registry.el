@@ -111,9 +111,10 @@ otherwise below) and must conform to the following:
 
 * `:auto-property': This function takes two arguments, RECIPE and
   PROPERTY, and should return an auto-generated value for that
-  property. It will be called to in order to fill in various
-  metadata fields about the package. For example, this could be
-  used to supply-auto-generated `:description' or `:website'
+  property. If no value can be auto-generated, it should return
+  nil. It will be called to in order to fill in various metadata
+  fields about the package. For example, this could be used to
+  supply-auto-generated `:description' or `:website'
   properties. This function will only be called for properties
   not explicitly specified by a recipe, so there is no need to
   check if the requested property already exists.
@@ -166,32 +167,3 @@ otherwise below) and must conform to the following:
     (list :type type
           :filter filter))))
 (put 'el-get-register-virtual-fetcher 'lisp-indent-function 1)
-
-(defsubst el-get-recipe-type (recipe)
-  "TODO DOC"
-  (el-get-plist-get recipe :type))
-
-(defsubst el-get-recipe-autoget (recipe prop)
-  "Get auto-generated value of PROP for RECIPE.
-
-TODO More info"
-  ;; :name and :type may be auto-generated
-  (unless (memq prop '(:name :type))
-    (funcall (el-get-fetcher-op recipe :auto-property) recipe prop)))
-
-(defsubst el-get-recipe-get (recipe prop)
-  "Like `plist-get' but includes auto-generated recipe properties."
-  (or
-   (plist-get recipe prop)
-   (el-get-recipe-autoget recipe prop)))
-
-(defun el-get-validate-recipe (recipe)
-  "TODO"
-  (let ((errors nil))
-    (unless (el-get-recipe-get recipe :name)
-      (push "Recipe has no name" errors))
-    (unless (el-get-recipe-get recipe :type)
-        (push "Recipe has no type" errors))
-    (or errors
-        (funcall (el-get-fetcher-op recipe :validate)
-                 recipe))))

@@ -70,7 +70,13 @@ with nil."
   "Eval BODY after replacing all keywords with their values in PLIST.
 
 Effectively, all keywords in BODY become variables that are
-looked up in PLIST. Keywords not present in PLIST are replaced by nil"
+looked up in PLIST. Keywords not present in PLIST are replaced by
+nil."
   (let ((body (cons 'progn body)))
     (el-get--substitute-keywords (eval plist) body)))
 (put 'el-get-plist-bind 'lisp-indent-function 1)
+
+(defsubst el-get--as-list (list-or-item)
+  (if (listp list-or-item)
+      list-or-item
+    (list list-or-item)))
