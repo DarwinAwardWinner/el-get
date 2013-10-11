@@ -3,10 +3,27 @@
 
 TODO DOC")
 
+(defun el-get-validate-fetcher-def (def)
+  "Throw an error if DEF does not look like a valid fetcher definition."
+  ;; Must be a hash table
+  (unless (hash-table-p def)
+    (error "Fetcher must be a hash table"))
+  ;; Must have a :fetch or :filter
+  (unless (or (gethash :fetch def)
+              (gethash :filter def))
+    (error "Fetcher must have a :fetch of :filter property"))
+  ;; All properties must be functions
+  (maphash
+   (lambda (k v)
+     (or (functionp v)
+         (error "Fetcher's %s property must be a function" k)))
+   def)
+  t)
+
 (defsubst el-get--get-fetcher (type)
   "Retrive full fetcher definition for TYPE.
 
-Throws an error if the requested fetcher does not exist"
+Throws an error if the requested fetcher does not exist."
   (or (gethash type el-get-fetchers)
       ;; TODO: el-get-error macro
       (error "Fetcher type %s not registered" type)))
@@ -15,39 +32,25 @@ Throws an error if the requested fetcher does not exist"
   "Set fetcher definition for TYPE to DEF.
 
 Performs basic validation ot DEF before setting it."
-  ;; Validate definition
-  (unless (and
-           ;; Must be a hash table
-           (hash-table-p def)
-           ;; Must have a :fetch or :filter
-           (or (gethash :fetch def)
-               (gethash :filter def))
-           ;; All properties must be functions
-           (condition-case nil
-               (prog1 t
-                 (maphash
-                  (lambda (k v)
-                    (or (functionp v)
-                        (error "Not a function")))
-                  def))
-             (error nil)))
-    (error "Invalid fetcher definition"))
+  ;; Validate fetcher definition
+  (el-get-validate-fetcher-def def)
   (puthash type def el-get-fetchers))
 
 (defun el-get-fetcher-op (type operation)
   "Return the OPERATION function for fetcher type TYPE.
 
 TYPE may either be the name of a fetcher type, the definition of
-one, or a recipe whose type property will be used. If the
-operation is not defined for the given type, returns nil. If the
-given type is not a recognized recipe type, throws an error. TODO"
+one, or a recipe, whose type property will be used. If the
+operation is not defined for the given type, this returns nil. If
+the given type is not a recognized recipe type, throws an
+error. TODO"
   (cond
    ;; Fetcher definition
    ((hash-table-p type)
     (gethash operation type))
    ;; Symbol naming a fetcher
    ((symbolp type)
-    (el-get-fetcher-op (el-get--fetcher type) operation))
+    (el-get-fetcher-op (el-get--get-fetcher type) operation))
    ;; String naming a fetcher
    ((stringp type)
     (el-get-display-warning "String used instead of symbol to name a type")
