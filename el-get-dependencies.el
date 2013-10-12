@@ -28,7 +28,7 @@
   "Return the graph of packages on which PACKAGE depends"
   (let* ((source (el-get-package-def (symbol-name package)))
 	 (method (el-get-package-method source))
-         (pdeps  (el-get-as-list (plist-get source :depends)))
+         (pdeps  (el-get-as-list (remove 'emacs (plist-get source :depends))))
 	 (alldeps
 	  ;; Make sure all elpa packages depend on the package `package'.
 	  ;; The package `package' is an elpa package, though, so exclude it
