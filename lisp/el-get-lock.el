@@ -10,7 +10,9 @@
 ;;; Commentary:
 
 ;; This uses Emacs' file locking primitives to implement file-based
-;; mutexes.
+;; mutexes. It doesn't really have anything to do with the rest of
+;; el-get, and other pacakges could conceivably use it. I may split it
+;; into a separate package at some point.
 
 ;;; Code:
 
@@ -41,7 +43,7 @@ This does not actually lock the file."
     (let ((bufname (buffer-name))
           (change-major-mode-with-file-name nil))
       (set-visited-file-name filename 'noquery)
-        (rename-buffer bufname))
+      (rename-buffer bufname))
     (current-buffer)))
 
 (defun el-get-lock-buffer-if-unlocked (&optional file)
@@ -150,6 +152,7 @@ asociated file will be unlocked."
     (when lockbuf
       (with-current-buffer lockbuf
         (unlock-buffer)
+        (set-buffer-modified-p nil)
         (setq el-get-active-locks (delq (current-buffer) el-get-active-locks))
         (kill-buffer (current-buffer))))))
 
@@ -162,7 +165,11 @@ Use only in emergencies."
     (el-get-release-file-lock (car el-get-active-locks))))
 
 (defun el-get-holding-file-lock (filename)
-  (eq (file-locked-p filename t))
+  "Returns t if current Emacs holds the lock to FILENAME.
+
+If FILENAME is not locked or is locked by a different Emacs
+process, returns nil."
+  (eq (file-locked-p filename) t))
 
 (defmacro el-get-with-file-lock (filename &rest body)
   "Execute BODY while holding the lock on FILENAME.
@@ -183,13 +190,16 @@ FILENAME to be released."
   (let* ((filename (eval filename))
          (arglist (if (listp filename) filename (list filename)))
          (filename (car arglist)))
+    (unless (stringp filename)
+      (error "Filename must be a string"))
     (if (el-get-holding-file-lock filename)
         `(progn ,@body)
       `(unwind-protect
            (progn
              (el-get-acquire-file-lock ,@arglist)
              ,@body)
-         (el-get-release-file-lock filename)))))
+         (el-get-release-file-lock ,filename)))))
+(put 'el-get-with-file-lock 'lisp-indent-function 1)
 
 (provide 'el-get-lock)
 ;;; el-get-lock.el ends here
