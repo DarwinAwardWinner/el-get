@@ -11,3 +11,11 @@ written in a certain order before other higher layers can be written.
 * Async package installation
 * Async package building
 * Async package init in batch emacs (for verifying successful install)
+
+# Clerical tasks
+
+* Fix author credits (lots of auto-generated file headers will just
+  say I wrote everything, which isn't true)
+* Choose a license
+* Fill in docstrings etc.
+* Custom declaraions
