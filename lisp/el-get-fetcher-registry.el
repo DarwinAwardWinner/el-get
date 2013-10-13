@@ -1,3 +1,33 @@
+;;; el-get-fetcher-registry.el --- Facilities for registering and accessing package fetchers
+
+;; Copyright (C) 2013  Ryan C. Thompson
+
+;; Author: Ryan C. Thompson <rct@thompsonclan.org>
+;; Keywords:
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;;
+
+;;; Code:
+
+(require 'cl)
+(require 'el-get-internals)
+(require 'el-get-recipe-manip)
+
 (defvar el-get-fetchers (make-hash-table :size 20)
   "Hash table of registered package fetching methods.
 
@@ -60,7 +90,7 @@ error. TODO"
     (el-get-fetcher-op (el-get-recipe-type type) operation))
    ;; Unrecognized fetcher type
    ((null type)
-    (error ))))
+    (error ""))))
 
 (defsubst el-get-fetcher-real-p (type)
   "Returns t if TYPE is a real fetcher type.
@@ -145,13 +175,13 @@ otherwise below) and must conform to the following:
     (loop for required-key in '(fetch)
           for value = (eval required-key)
           unless value
-          do (error "Missing required keyword argument: :%s" required-arg)
-          do (puthash (intern (format ":%s" required-arg))
+          do (error "Missing required keyword argument: :%s" required-key)
+          do (puthash (intern (format ":%s" required-key))
                       value fetcher-def))
     (loop for optional-key in '(update remove compute-checksum guess-metadata)
           for value = (eval optional-key)
           if value
-          do (puthash (intern (format ":%s" optional-arg))
+          do (puthash (intern (format ":%s" optional-key))
                       value fetcher-def))
     (puthash :type type fetcher-def)
     (el-get--set-fetcher type fetcher-def)))
@@ -170,3 +200,6 @@ otherwise below) and must conform to the following:
     (list :type type
           :filter filter))))
 (put 'el-get-register-virtual-fetcher 'lisp-indent-function 1)
+
+(provide 'el-get-fetcher-registry)
+;;; el-get-fetcher-registry.el ends here

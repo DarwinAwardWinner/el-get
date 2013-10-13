@@ -1,3 +1,34 @@
+;;; el-get-recipe-manip.el --- Functions for manipulating recipe forms
+
+;; Copyright (C) 2013  Ryan C. Thompson
+
+;; Author: Ryan C. Thompson(require 'el-get-fetcher-registry) <rct@thompsonclan.org>
+;; Keywords:
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;;
+
+;;; Code:
+
+(require 'cl)
+(require 'el-get-internals)
+
+;; Provide is up here to break recursive require
+(provide 'el-get-recipe-manip)
 (require 'el-get-fetcher-registry)
 
 (defsubst el-get-recipe-autoget (recipe prop)
@@ -26,11 +57,11 @@ TODO More info"
 
 (defsubst el-get-recipe-name (recipe)
   "TODO DOC"
-  (el-get-plist-get recipe :name))
+  (el-get-recipe-get recipe :name))
 
 (defsubst el-get-recipe-type (recipe)
   "TODO DOC"
-  (el-get-plist-get recipe :type))
+  (el-get-recipe-get recipe :type))
 
 (defun el-get-validate-recipe (recipe &optional noerror)
   "Checks if recipe looks valid.
@@ -50,7 +81,7 @@ encountered."
           ;; Type-specific validation, only if we passed the above
           (unless errors
             (setq errors
-                  (el-get--as-list
+                  (el-get-as-list
                    (funcall (or (el-get-fetcher-op recipe :validate)
                                 #'ignore)
                             recipe)))))
@@ -66,3 +97,6 @@ encountered."
         ;; Raise an error
         (error "Errors encountered while validating recipe:\n%s"
                (mapconcat #'identity errors "\n"))))))
+
+(provide 'el-get-recipe-manip)
+;;; el-get-recipe-manip.el ends here

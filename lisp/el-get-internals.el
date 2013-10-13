@@ -1,3 +1,17 @@
+;;; el-get-internals.el --- Low-level functions required by el-get
+
+;; Copyright (C) 2013  Ryan C. Thompson
+
+;; Author: Ryan C. Thompson <rct@thompsonclan.org>
+
+;; LICENSE???
+
+;;; Commentary:
+
+;;
+
+;;; Code:
+
 (defun el-get-print-to-string (object &optional pretty)
   "Return string representation of lisp object.
 
@@ -58,8 +72,7 @@ Original documentation for `display-warning' appears below:
 
 (display-warning TYPE MESSAGE &optional LEVEL BUFFER-NAME)
 
-"
-             (documentation 'display-warning)))
+" (documentation 'display-warning)))
 
 (defun el-get-debug-message (format-string &rest args)
   "Record a debug message related to el-get."
@@ -71,6 +84,24 @@ Original documentation for `display-warning' appears below:
 This is the same as `message', but the message is automatically
 prefixed by \"el-get: \"."
   (apply #'message (concat "el-get: " format-string) args))
+
+;; Define `el-get-error' as an error symbol.
+(put 'el-get-error 'error-conditions
+     '(el-get-error error))
+(put 'el-get-error 'error-message
+     "el-get error")
+
+(defun el-get-error (string &rest args)
+  "Raise an error related to el-get.
+
+This is the same as `error', but the error message is
+automatically prefixed by \"el-get error: \".
+
+Also, the raised error has an additional condition
+`el-get-error'."
+  ;; Definition copied from `error'.
+  (while t
+    (signal 'el-get-error  (apply 'format args))))
 
 ;;
 ;; "Fuzzy" data structure handling
@@ -162,3 +193,6 @@ For example, the following returns 3:
   (let ((body (cons 'progn body)))
     (el-get--substitute-keywords (eval plist) body)))
 (put 'el-get-plist-bind 'lisp-indent-function 1)
+
+(provide 'el-get-internals)
+;;; el-get-internals.el ends here
