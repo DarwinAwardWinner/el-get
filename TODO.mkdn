@@ -5,7 +5,7 @@ written in a certain order before other higher layers can be written.
 
 * Install Methods
 * Recipe I/O
-* Recipe transformers
+* Recipe transformers (virtual install methods)
 * Async package fetching (just file method first, I guess)
 * Async package unpacking
 * Async package installation
