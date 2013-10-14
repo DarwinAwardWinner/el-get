@@ -12,6 +12,47 @@
 
 ;;; Code:
 
+(require 'cl)
+
+(defconst el-get-base-directory
+  ;; This should give the right path whether this file is being
+  ;; loaded, or this form is being evalled via e.g. C-x C-e.
+  (expand-file-name
+   ".."
+   (file-name-directory
+    (or load-file-name
+        (locate-library "el-get-internals")
+        (when (string-match-p "el-get-internals.el\\'"
+                              (buffer-file-name))
+          (buffer-file-name))
+        (error "Cannot determine path to el-get."))))
+  "Base directory of el-get installation.")
+
+(defsubst el-get-arg-is-literal-or-quoted (arg)
+  "Return non-nil if ARG is a quoted form or a literal.
+
+Specifically, returns nil if ARG is a symbol representing a
+variable (i.e. any symbol other than `t', `nil', or a keyword, or a
+function call (i.e. an unquoted list).)"
+  ;; If an error is encountered, give up and assume it's not a
+  ;; literal.
+  (ignore-errors
+    (or
+     ;; t & nil are literals
+     (memq arg '(t nil))
+     ;; keywords are literals
+     (keywordp arg)
+     ;; Any non-symbol atom (number, string, hash table, etc.)
+     (and (atom arg)
+          (not (symbolp arg)))
+     ;; Quoted form (i.e. `(quote ARG)' or `(function ARG)'
+     (and (listp arg)
+          (= (length arg) 2)
+          (memq (car arg) '(quote function)))
+     ;; Functions are literals, technically. They are guaranteed to be
+     ;; non-nil.
+     (functionp arg))))
+
 (defun el-get-print-to-string (object &optional pretty)
   "Return string representation of lisp object.
 
@@ -27,20 +68,9 @@ the original object."
 (cl-define-compiler-macro el-get-print-to-string
     (&whole form object &optional pretty)
   (condition-case nil
-      (let* ((pretty-is-literal-or-quoted
-              (or
-               ;; t & nil are literals
-               (memq pretty '(t nil))
-               ;; Any non-symbol atom (number string, etc.)
-               (and (atom pretty)
-                    (not (symbolp pretty)))
-               ;; Quoted form
-               (and (listp pretty)
-                    (= (length pretty) 2)
-                    (eq (car pretty) 'quote))))
-             (print-func
-              (when pretty-is-literal-or-quoted
-                (if (eval pretty) #'pp-to-string #'prin1-to-string))))
+      (let ((print-func
+             (when (el-get-arg-is-literal-or-quoted pretty)
+               (if (eval pretty) #'pp-to-string #'prin1-to-string))))
         (if print-func
             `(let (print-level print-length)
                (,print-func object))
@@ -62,17 +92,9 @@ for equivalence to OBJECT using TEST. The default TEST is
         result-string)
     (error (error "Object failed to serialize to string: %S" object))))
 
-(fset 'el-get-display-warning (apply-partially #'display-warning 'el-get))
-(put 'el-get-display-warning 'function-documentation
-     (concat "`display-warning' with TYPE set to `el-get'.
-
-Original documentation for `display-warning' appears below:
-
-------------------------------------------------------------------------
-
-(display-warning TYPE MESSAGE &optional LEVEL BUFFER-NAME)
-
-" (documentation 'display-warning)))
+(defsubst el-get-display-warning (message &optional level buffer-name)
+  "Same as `display-warning' with TYPE set to `el-get'."
+  (display-warning 'el-get message level buffer-name))
 
 (defun el-get-debug-message (format-string &rest args)
   "Record a debug message related to el-get."
@@ -166,7 +188,6 @@ this function."
   (or (plist-get plist prop)
       (error "Property list does not contain property %s" prop)))
 
-
 (defun el-get--substitute-keywords (plist expr)
   "Replace all keywords in EXPR with their values from PLIST.
 
@@ -189,10 +210,62 @@ nil.
 
 For example, the following returns 3:
 
-    (el-get-plist-bind '(:a 1 :b 2) (+ :a :b))"
+    (el-get-plist-bind '(:a 1 :b 2) (+ :a :b))
+
+Note that the lookups in PLIST happen before BODY is evaluated,
+so if BODY modifies PLIST, those modifications will not be
+reflected in the substituted values."
   (let ((body (cons 'progn body)))
     (el-get--substitute-keywords (eval plist) body)))
 (put 'el-get-plist-bind 'lisp-indent-function 1)
+
+(defun el-get-read-from-file (filename)
+  "Read a single lisp form from FILENAME."
+  (with-temp-buffer
+        (insert-file-contents filename)
+        (read (current-buffer))))
+
+(defun el-get-clean-plist (plist)
+  "Remove any duplicate properties from PLIST."
+  (loop with result = nil
+        with seen-props = nil
+        for (prop val) on plist by #'cddr
+        unless (memq prop seen-props)
+        nconc (list prop val) into result
+        and collect prop into seen-props
+        finally return result))
+
+(defun el-get-merge-plists (&rest plists)
+  "Merge PLISTS into a single property list.
+
+Properties from plists earlier in the argument list take
+precedence over the same properties in later plists."
+  (el-get-clean-plist (apply #'append plists)))
+
+(defsubst el-get-plist-keys (plist)
+  "Return a list of all keys in PLIST.
+
+Duplicates are removed."
+  (cl-remove-duplicates
+   (loop for (k _) on plist by #'cddr
+         collect k)
+   :test #'eq))
+
+(defun* el-get-plists-equal (plist1 plist2 &optional (value-test #'equal))
+  "Return non-nil if PLIST1 and PLIST2 have the same properties and values.
+
+Keys are compared with `eq' since they are expected to be
+keywords. Values are compared with VALUE-TEST, which defaults to
+`equal'.
+
+Note that this function makes no distinction between an unset
+property and a property that is set to nil."
+  (loop for key in (el-get-plist-keys (append plist1 plist2))
+        unless (funcall value-test
+                        (plist-get plist1 key)
+                        (plist-get plist2 key))
+        return nil
+        finally return t))
 
 (provide 'el-get-internals)
 ;;; el-get-internals.el ends here
