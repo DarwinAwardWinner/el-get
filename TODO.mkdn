@@ -12,6 +12,12 @@ written in a certain order before other higher layers can be written.
 * Async package building
 * Async package init in batch emacs (for verifying successful install)
 
+# Misc stuff
+
+* Implement `el-get-describe-fetcher` to give descriptions of all
+  properties supported by a given fetcher.
+* Lexbind
+
 # Clerical tasks
 
 * Fix author credits (lots of auto-generated file headers will just
