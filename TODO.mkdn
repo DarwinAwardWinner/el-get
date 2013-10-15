@@ -3,11 +3,15 @@
 This rewrite is happening from the bottom up, so things need to be
 written in a certain order before other higher layers can be written.
 
-* Install Methods
+## Done
+
+* Fetcher registry
 * Recipe I/O
 * Recipe transformers (virtual install methods)
-* Async package fetching (just file method first, I guess)
-* Async package unpacking
+
+## To Do
+
+* Async package fetching & unpacking (just file method first, I guess)
 * Async package installation
 * Async package building
 * Async package init in batch emacs (for verifying successful install)
