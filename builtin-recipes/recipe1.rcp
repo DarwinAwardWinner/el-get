@@ -1,0 +1,4 @@
+(:name recipe1
+       :type noop
+       :some-prop 123
+       :other-prop nil)

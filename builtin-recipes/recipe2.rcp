@@ -1,0 +1,4 @@
+(:name recipe2
+       :type testvirt
+       :some-prop 456
+       :other-prop nil)
