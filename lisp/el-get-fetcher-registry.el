@@ -39,15 +39,10 @@ TODO DOC")
   (unless (hash-table-p def)
     (error "Fetcher must be a hash table"))
   ;; Must have a :fetch or :filter
-  (unless (or (gethash :fetch def)
-              (gethash :filter def))
-    (error "Fetcher must have a :fetch of :filter property"))
-  ;; All properties must be functions
-  (maphash
-   (lambda (k v)
-     (or (functionp v)
-         (error "Fetcher's %s property must be a function" k)))
-   def)
+  (unless (functionp (or (gethash :fetch def)
+                         (gethash :filter def)))
+    (error "Fetcher must have a :fetch or :filter property"))
+  ;; TODO more validation
   t)
 
 (defsubst el-get--get-fetcher (type)
