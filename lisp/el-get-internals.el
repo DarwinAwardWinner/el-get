@@ -73,7 +73,7 @@ the original object."
                (if (eval pretty) #'pp-to-string #'prin1-to-string))))
         (if print-func
             `(let (print-level print-length)
-               (,print-func object))
+               (,print-func ,object))
           form))
     ;; Fallback to no expansion on error
     (error form)))
@@ -98,7 +98,7 @@ for equivalence to OBJECT using TEST. The default TEST is
 
 (defun el-get-debug-message (format-string &rest args)
   "Record a debug message related to el-get."
-  (el-get-display-warning (format format-string args) :debug))
+  (el-get-display-warning (apply #'format format-string args) :debug))
 
 (defun el-get-message (format-string &rest args)
   "Display a message related to el-get.
@@ -123,7 +123,7 @@ Also, the raised error has an additional condition
 `el-get-error'."
   ;; Definition copied from `error'.
   (while t
-    (signal 'el-get-error  (apply 'format args))))
+    (signal 'el-get-error (list (apply 'format string args)))))
 
 ;;
 ;; "Fuzzy" data structure handling
@@ -180,7 +180,10 @@ this function."
 (defun el-get--hash-to-plist (hash)
   "Convert HASH to an equivalent plist."
   (let (plist)
-    (maphash (lambda (k v) (plist-put plist k v)) hash)
+    (maphash
+     (lambda (k v)
+       (setq plist (plist-put plist k v)))
+     hash)
     plist))
 
 (defun el-get-plist-get-nodef (plist prop)

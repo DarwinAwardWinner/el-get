@@ -40,7 +40,7 @@
   (expand-file-name "auto-emacswiki-recipes" el-get-base-directory)
   "Directory where el-get stores its auto-generated Emacswiki recipes.")
 
-(defcustom el-get-recipe-path '()
+(defcustom el-get-recipe-path
   (list el-get-builtin-recipe-dir
         el-get-elpa-recipe-dir
         el-get-emacswiki-recipe-dir)
@@ -80,6 +80,7 @@ found. TODO DOC"
    for dir in el-get-recipe-path
    for rfile = (expand-file-name (concat (el-get-as-string name) ".rcp")
                                  dir)
+   do (el-get-debug-message "Checking for recipe %s in file %s" name rfile)
    do (setq
        next-recipe
        (when (file-exists-p rfile)
@@ -97,11 +98,13 @@ found. TODO DOC"
   "Return full definition for RECIPE.
 
 RECIPE can be a recipe name, a partial (typeless) recipe
-definition, or a complete recipe definition (with a type), which
-is returned unchanged.
+definition, or a complete recipe definition (with a type). A
+complete recipe is returned unmodified, while for other types the
+complete recipe is read from the appropriate file.
 
 With optional arg DEVIRTUALIZE, call
-`el-get-devirtualize-recipe-def' on RECIPE before returning it."
+`el-get-devirtualize-recipe-def' on the result before returning
+it."
   (let ((recipe
          (if (listp recipe)
              ;; Recipe definition, possibly partial
@@ -114,6 +117,7 @@ With optional arg DEVIRTUALIZE, call
                 (el-get-read-recipe (el-get-recipe-name recipe))))
            ;; Just a recipe name
            (el-get-read-recipe recipe))))
+    (el-get-debug-message "Resolved recipe: %S" recipe)
     (if devirtualize
         (el-get-devirtualize-recipe-def recipe)
       recipe)))

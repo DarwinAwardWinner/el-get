@@ -159,6 +159,7 @@ otherwise below) and must conform to the following:
   it is being called o a recipe with a `:name' property and the
   correct `:type' property.
 "
+  (message "Fetch: %S" (eval 'fetch t))
   ;; Sanity check
   (unless (and type (symbolp type))
     (error "TYPE must be a symbol"))
@@ -168,25 +169,19 @@ otherwise below) and must conform to the following:
                             :debug))
   (let ((fetcher-def (make-hash-table :size 5)))
     (loop for required-key in '(fetch)
-          for value = (eval required-key)
+          do (setq value (eval required-key t))
           unless value
           do (error "Missing required keyword argument: :%s" required-key)
           do (puthash (intern (format ":%s" required-key))
                       value fetcher-def))
     (loop for optional-key in '(update remove compute-checksum guess-metadata)
-          for value = (eval optional-key)
+          do (setq value (eval optional-key t))
           if value
           do (puthash (intern (format ":%s" optional-key))
                       value fetcher-def))
     (puthash :type type fetcher-def)
     (el-get--set-fetcher type fetcher-def)))
 (put 'el-get-register-fetcher 'lisp-indent-function 1)
-
-(defun el-get-register-fetcher-alias (newtype oldtype)
-  "TODO DOC"
-  (el-get--set-fetcher
-   newtype
-   (el-get--get-fetcher oldtype)))
 
 (defun el-get-register-virtual-fetcher (type filter)
   (el-get--set-fetcher
@@ -195,6 +190,15 @@ otherwise below) and must conform to the following:
     (list :type type
           :filter filter))))
 (put 'el-get-register-virtual-fetcher 'lisp-indent-function 1)
+
+;; This needs to create closures
+(eval
+ #'(defun el-get-register-fetcher-alias (newtype oldtype)
+     "TODO DOC"
+     (el-get-register-virtual-fetcher newtype
+       (lambda (recipe)
+         (el-get-recipe-put recipe :type oldtype))))
+ t)
 
 (provide 'el-get-fetcher-registry)
 ;;; el-get-fetcher-registry.el ends here

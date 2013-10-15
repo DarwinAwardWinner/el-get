@@ -36,7 +36,8 @@
 
 TODO More info"
   ;; :name and :type may be auto-generated
-  (unless (memq prop '(:name :type))
+  (unless (or (memq prop '(:name :type))
+              (null (el-get-fetcher-op recipe :auto-property)))
     (funcall (el-get-fetcher-op recipe :auto-property) recipe prop)))
 ;; Optimize to nil for explicit-only properties
 (cl-define-compiler-macro el-get-recipe-autoget (&whole form recipe prop)
@@ -88,15 +89,15 @@ have that name in order to validate.
 
 "
   (let ((errors nil))
-    (condition-case nil
+    (condition-case err
         (progn
           ;; Type-independent validation
           (unless (el-get-recipe-name recipe)
             (add-to-list 'errors "Recipe has no name" 'append))
-          (unless (eq (symbol-name (el-get-recipe-name recipe))
-                      (el-get-as-symbol expected-name))
+          (unless (string= (symbol-name (el-get-recipe-name recipe))
+                           (el-get-as-string expected-name))
             (add-to-list 'errors
-                         (format "Recipe has name %s but expected name was %s"
+                         (format "Recipe has name %S but expected name was %S"
                                  (el-get-recipe-name recipe) expected-name)
                          'append))
           (unless (el-get-recipe-type recipe)
@@ -110,9 +111,10 @@ have that name in order to validate.
                             recipe)))))
       ;; If the above code actually throws any errors, record that in
       ;; the error list.
-      (error (add-to-list 'errors
-                          "Encountered a lisp error while validating recipe"
-                          'append)))
+      (error (add-to-list
+              'errors
+              (format "Encountered a lisp error while validating recipe: %S" err)
+              'append)))
     (when errors
       (if noerror
           ;; Just return the error list
@@ -149,16 +151,22 @@ have that name in order to validate.
 This assumes that appropriate checking has been done to ensure
 that FILTER is the correct filter for RECIPE's type.
 
+RECIPE may also be modified by side effect of this function.
+
 After filtering, if the result does not have an `:orig-recipe'
-property, this property is set to RECIPE.
+property, this property is set to a copy of RECIPE.
 
 If FILTER does not alter RECIPE, raise an error."
-  (let ((result (funcall filter recipe)))
-    (when (el-get-plists-equal recipe result)
-      (el-get-error "Recipe was not altered by filter:\n%s"
-                    (el-get-print-to-string recipe 'pretty)))
+  (el-get-debug-message "Filtering recipe: %S" recipe)
+  (el-get-debug-message "Pretty recipe:\n%s" (el-get-print-to-string recipe t))
+  (let ((orig-recipe (copy-list recipe))
+        (result (funcall filter recipe)))
+    (when (el-get-plists-equal orig-recipe result)
+      (el-get-error "Recipe was not altered by filter:\n%s\n%s"
+                    (el-get-print-to-string orig-recipe 'pretty)
+                    (el-get-print-to-string result 'pretty)))
     (when (not (plist-get result :orig-recipe))
-      (plist-put result :orig-recipe recipe))
+      (plist-put result :orig-recipe orig-recipe))
     result))
 
 (defun el-get-devirtualize-recipe-def (recipe &optional non-recursive)
@@ -180,6 +188,8 @@ expansion. If RECIPE is already of a real type, return it unchanged."
                recipe
                (el-get-fetcher-op recipe :filter))))))
   recipe)
+
+;; TODO: Recipe documentation set/get
 
 (provide 'el-get-recipe-manip)
 ;;; el-get-recipe-manip.el ends here
