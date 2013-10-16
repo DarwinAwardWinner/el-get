@@ -106,6 +106,8 @@ that defines a fetcher type."
   (or (el-get-fetcher-real-p type)
       (el-get-fetcher-virtual-p type)))
 
+;; TODO: add a DOC argument and make it available via
+;; `el-get-describe-package-type' or similar function.
 (defun* el-get-register-fetcher (type &key fetch update remove
                                      compute-checksum guess-metadata)
   "TODO DOC
@@ -183,6 +185,7 @@ otherwise below) and must conform to the following:
     (el-get--set-fetcher type fetcher-def)))
 (put 'el-get-register-fetcher 'lisp-indent-function 1)
 
+;; TODO Still need a validate method
 (defun el-get-register-virtual-fetcher (type filter)
   (el-get--set-fetcher
    type
