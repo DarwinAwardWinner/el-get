@@ -191,14 +191,14 @@ otherwise below) and must conform to the following:
           :filter filter))))
 (put 'el-get-register-virtual-fetcher 'lisp-indent-function 1)
 
-;; This needs to create closures
-(eval
- #'(defun el-get-register-fetcher-alias (newtype oldtype)
-     "TODO DOC"
-     (el-get-register-virtual-fetcher newtype
-       (lambda (recipe)
-         (el-get-recipe-put recipe :type oldtype))))
- t)
+(defun el-get-register-fetcher-alias (newtype oldtype)
+  "Register NEWTYPE as an alias for OLDTYPE.
+
+Any recipe whose `:type' property is NEWTYPE will then be treated
+as it it was OLDTYPE instead."
+  (el-get-register-virtual-fetcher newtype
+    `(lambda (recipe)
+       (el-get-recipe-put recipe :type ,oldtype))))
 
 (provide 'el-get-fetcher-registry)
 ;;; el-get-fetcher-registry.el ends here
