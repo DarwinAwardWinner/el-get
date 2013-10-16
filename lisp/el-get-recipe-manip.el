@@ -165,29 +165,30 @@ If FILTER does not alter RECIPE, raise an error."
       (el-get-error "Recipe was not altered by filter:\n%s\n%s"
                     (el-get-print-to-string orig-recipe 'pretty)
                     (el-get-print-to-string result 'pretty)))
+    ;; Store the original recipe as a property in the new recipe
     (when (not (plist-get result :orig-recipe))
       (plist-put result :orig-recipe orig-recipe))
     result))
 
-(defun el-get-devirtualize-recipe-def (recipe &optional non-recursive)
+(defun* el-get-devirtualize-recipe-def (recipe &key (recursive t) (validate t))
   "If RECIPE is of a virtual type, filter it until it is real.
 
-With optional arg NON-RECURSIVE, only do one round of filter
-expansion. If RECIPE is already of a real type, return it unchanged."
-  (when
-      (when (el-get-fetcher-virtual-p recipe)
-        (setq recipe
-              (el-get-apply-recipe-filter
-               recipe
-               (el-get-fetcher-op recipe :filter))))
-    ;; This only executes if the above
-    (when (not non-recursive)
-      (while (el-get-fetcher-virtual-p recipe)
-        (setq recipe
-              (el-get-apply-recipe-filter
-               recipe
-               (el-get-fetcher-op recipe :filter))))))
-  recipe)
+If keyword argument RECURSIVE is set to nil (default is t), only
+one round of filtering will be carried out.
+
+If keyword argument VALIDATE is set to nil (default is t), the
+recipe will not be validated after each filtering step.
+
+If RECIPE is already of a real type, is is returned unchanged."
+  (loop while (el-get-fetcher-virtual-p recipe)
+        do (setq recipe
+                 (el-get-apply-recipe-filter
+                  recipe
+                  (el-get-fetcher-op recipe :filter)))
+        if validate
+        do (el-get-validate-recipe recipe)
+        if non-recursive return recipe
+        finally return recipe))
 
 ;; TODO: Recipe documentation set/get
 
