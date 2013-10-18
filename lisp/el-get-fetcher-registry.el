@@ -28,37 +28,99 @@
 (require 'el-get-internals)
 (require 'el-get-recipe-manip)
 
-(defvar el-get-fetchers (make-hash-table :size 20)
-  "Hash table of registered package fetching methods.
+(defconst el-get-fetcher-required-props
+  (list :type #'el-get-bindable-symbol-p
+        :fetch #'functionp)
+  "Plist of required fetcher properties.
 
-TODO DOC")
+Each property in this list is a property that must be provided to
+`el-get-register-fetcher', and that property's value in this list
+is a predicate for the provided value to satisfy.")
+
+(defconst el-get-fetcher-optional-props
+  (list :update #'functionp
+        :remove #'functionp
+        :compute-checksum #'functionp
+        :auto-property #'functionp
+        :validate #'functionp
+        :documentation #'stringp)
+  "Plist of optional fetcher properties.
+
+Each property in this list is a property that may be provided to
+`el-get-register-fetcher', and that property's value in this list
+is a predicate for the provided value to satisfy.")
+
+(defconst el-get-virtual-fetcher-required-props
+  (list :type #'el-get-bindable-symbol-p
+        :filter #'functionp)
+  "Plist of required fetcher properties.
+
+Each property in this list is a property that must be provided to
+`el-get-register-fetcher', and that property's value in this list
+is a predicate for the provided value to satisfy.")
+
+(defconst el-get-virtual-fetcher-optional-props
+  (list :auto-property #'functionp
+        :validate #'functionp
+        :documentation #'stringp)
+  "Plist of optional fetcher properties.
+
+Each property in this list is a property that may be provided to
+`el-get-register-fetcher', and that property's value in this list
+is a predicate for the provided value to satisfy.")
 
 (defun el-get-validate-fetcher-def (def)
   "Throw an error if DEF does not look like a valid fetcher definition."
-  ;; Must be a hash table
-  (unless (hash-table-p def)
-    (error "Fetcher must be a hash table"))
-  ;; Must have a :fetch or :filter
-  (unless (functionp (or (gethash :fetch def)
-                         (gethash :filter def)))
-    (error "Fetcher must have a :fetch or :filter property"))
-  ;; TODO more validation
-  t)
+  ;; We validate it as a plist
+  (when (hash-table-p def)
+    (setq def (el-get-hash-to-plist def)))
+  (let ((errors
+         (cond
+          ((plist-get def :filter)
+           (el-get-validate-plist def
+                                  el-get-virtual-fetcher-required-props
+                                  el-get-virtual-fetcher-optional-props))
+          (t
+           (el-get-validate-plist def
+                                  el-get-fetcher-required-props
+                                  el-get-fetcher-optional-props)))))
+    (when errors
+     (el-get-error
+      (mapconcat #'identity
+                 (cons "Errors encountered during fetcher validation:"
+                       errors)
+                 "\n")))))
 
-(defsubst el-get--get-fetcher (type)
+(defvar el-get-fetchers (make-hash-table :size 20)
+  "Hash table of registered package fetching methods.
+
+TODO link to docs")
+
+(defsubst el-get-get-fetcher (type)
   "Retrive full fetcher definition for TYPE.
 
 Throws an error if the requested fetcher does not exist."
   (or (gethash type el-get-fetchers)
-      ;; TODO: el-get-error macro
-      (error "Fetcher type %s not registered" type)))
+      (el-get-error "Fetcher type %s not registered" type)))
 
-(defsubst el-get--set-fetcher (type def)
+(defsubst el-get-set-fetcher (type def)
   "Set fetcher definition for TYPE to DEF.
 
-Performs basic validation ot DEF before setting it."
+Validates DEF before setting it, raising an error if it fails to
+validate."
   ;; Validate fetcher definition
   (el-get-validate-fetcher-def def)
+  ;; Make sure TYPE is the same as DEF's value for :type
+  (when (not (eq type (plist-get def :type)))
+    (el-get-error "Tried to register fetcher named %s under the name %s"
+                  (plist-get def :type) type))
+  ;; Don't use `el-get-fetcher-registered-p' here because it isn't
+  ;; defined yet.
+  (when (gethash type el-get-fetchers)
+    (el-get-display-warning (format "Re-registering recipe type %s" type)
+                            :debug))
+  (when (listp def)
+    (setq def (el-get-plist-to-hash def)))
   (puthash type def el-get-fetchers))
 
 (defun el-get-fetcher-op (type operation)
@@ -69,23 +131,28 @@ one, or a recipe, whose type property will be used. If the
 operation is not defined for the given type, this returns nil. If
 the given type is not a recognized recipe type, throws an
 error. TODO"
+  ;; Multipe dispatch via recursion
   (cond
-   ;; Fetcher definition
+   ;; String naming an operation
+   ((stringp operation)
+    (el-get-display-warning "String used instead of symbol to name an operation")
+    (el-get-fetcher-op type (intern operation)))
+   ;; Hash table = Fetcher definition
    ((hash-table-p type)
     (gethash operation type))
    ;; Symbol naming a fetcher
    ((symbolp type)
-    (el-get-fetcher-op (el-get--get-fetcher type) operation))
+    (el-get-fetcher-op (el-get-get-fetcher type) operation))
    ;; String naming a fetcher
    ((stringp type)
     (el-get-display-warning "String used instead of symbol to name a type")
     (el-get-fetcher-op (intern type) operation))
-   ;; Recipe
+   ;; List = Recipe definition
    ((listp type)
     (el-get-fetcher-op (el-get-recipe-type type) operation))
    ;; Unrecognized fetcher type
    ((null type)
-    (error ""))))
+    (el-get-error "Unrecognized fetcher type"))))
 
 (defsubst el-get-fetcher-real-p (type)
   "Returns t if TYPE is a real fetcher type.
@@ -101,21 +168,20 @@ TYPE may either be a symbol naming a fetcher type or a hash table
 that defines a fetcher type."
   (el-get-fetcher-op type :filter))
 
-(defsubst el-get-fetcher-defined-p (type)
+(defsubst el-get-fetcher-registered-p (type)
   "Returns t if TYPE is a registered fetcher type."
   (or (el-get-fetcher-real-p type)
       (el-get-fetcher-virtual-p type)))
 
 ;; TODO: add a DOC argument and make it available via
 ;; `el-get-describe-package-type' or similar function.
-(defun* el-get-register-fetcher (type &key fetch update remove
-                                     compute-checksum guess-metadata)
+(defun* el-get-register-fetcher (&rest def)
   "TODO DOC
 
-A fetcher must have at least a `:fetch' attribute; all others are
-optional. The values of each attribute should be functions that
-each take the same two arguments RECIPE and DESTDIR (unless noted
-otherwise below) and must conform to the following:
+TODO Explain real & virtual.
+
+A fetcher must have at least `:type' and `:fetch' attributes; all
+others are optional. TODO
 
 * `:fetch': This function should fetch the file(s) for the
   package described by RECIPE into DESTDIR, such that the package
@@ -160,48 +226,25 @@ otherwise below) and must conform to the following:
   have :url property\". The validation function may assume that
   it is being called o a recipe with a `:name' property and the
   correct `:type' property.
-"
-  (message "Fetch: %S" (eval 'fetch t))
-  ;; Sanity check
-  (unless (and type (symbolp type))
-    (error "TYPE must be a symbol"))
-  ;; Warn about redefining fetchers
-  (when (gethash type el-get-fetchers)
-    (el-get-display-warning (format "Re-registering recipe type %s" type)
-                            :debug))
-  (let ((fetcher-def (make-hash-table :size 5)))
-    (loop for required-key in '(fetch)
-          do (setq value (eval required-key t))
-          unless value
-          do (error "Missing required keyword argument: :%s" required-key)
-          do (puthash (intern (format ":%s" required-key))
-                      value fetcher-def))
-    (loop for optional-key in '(update remove compute-checksum guess-metadata)
-          do (setq value (eval optional-key t))
-          if value
-          do (puthash (intern (format ":%s" optional-key))
-                      value fetcher-def))
-    (puthash :type type fetcher-def)
-    (el-get--set-fetcher type fetcher-def)))
-(put 'el-get-register-fetcher 'lisp-indent-function 1)
 
-;; TODO Still need a validate method
-(defun el-get-register-virtual-fetcher (type filter)
-  (el-get--set-fetcher
-   type
-   (el-get--plist-to-hash
-    (list :type type
-          :filter filter))))
-(put 'el-get-register-virtual-fetcher 'lisp-indent-function 1)
+* `:filter': TODO
+"
+  (el-get-set-fetcher (plist-get props :type) props)))
 
 (defun el-get-register-fetcher-alias (newtype oldtype)
   "Register NEWTYPE as an alias for OLDTYPE.
 
 Any recipe whose `:type' property is NEWTYPE will then be treated
-as it it was OLDTYPE instead."
-  (el-get-register-virtual-fetcher newtype
-    `(lambda (recipe)
-       (el-get-recipe-put recipe :type ,oldtype))))
+as it it was OLDTYPE instead.
+
+This function actually registers NEWTYPE as a virtual fetcher
+type whose filter function just changes the recipe's `:type'
+property to OLDTYPE and leaves the rest of the recipe alone."
+  (el-get-register-fetcher
+   :type newtype
+   :filter
+   `(lambda (recipe)
+      (el-get-recipe-put recipe :type ,oldtype))))
 
 (provide 'el-get-fetcher-registry)
 ;;; el-get-fetcher-registry.el ends here

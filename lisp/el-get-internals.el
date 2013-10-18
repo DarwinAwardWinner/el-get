@@ -160,7 +160,7 @@ returning a list that contains it (and only it)."
       (null obj)))
 
 ;; Property list/hash table interconversion
-(defun el-get--plist-to-hash (plist &rest make-hash-table-args)
+(defun el-get-plist-to-hash (plist &rest make-hash-table-args)
   "Convert PLIST to an equivalent hash table.
 
 Additional arguments are passed to `make-hash-table'.
@@ -177,7 +177,7 @@ this function."
           do (puthash k v hash))
     hash))
 
-(defun el-get--hash-to-plist (hash)
+(defun el-get-hash-to-plist (hash)
   "Convert HASH to an equivalent plist."
   (let (plist)
     (maphash
@@ -191,17 +191,19 @@ this function."
   (or (plist-get plist prop)
       (error "Property list does not contain property %s" prop)))
 
-(defun el-get--substitute-keywords (plist expr)
+(defun el-get-substitute-keywords (plist expr)
   "Replace all keywords in EXPR with their values from PLIST.
 
 If a keyword in EXPR is missing from PLIST, it will be replaced
-with nil."
+with nil. Quoted forms are not modified."
   (cond
    ((keywordp expr)
     (plist-get plist expr))
-   ((consp expr)
-    (cons (el-get--substitute-keywords plist (car expr))
-          (el-get--substitute-keywords plist (cdr expr))))
+   ((and (consp expr)
+         ;; Don't recurse into quoted forms
+         (not (eq (car expr) 'quote)))
+    (cons (el-get-substitute-keywords plist (car expr))
+          (el-get-substitute-keywords plist (cdr expr))))
    (expr)))
 
 (defmacro el-get-plist-bind (plist &rest body)
@@ -209,7 +211,8 @@ with nil."
 
 Effectively, all keywords in BODY become variables that are
 looked up in PLIST. Keywords not present in PLIST are replaced by
-nil.
+nil. Quote forms are not modified, keywords may be protected from
+substitution by quoting.
 
 For example, the following returns 3:
 
@@ -219,7 +222,7 @@ Note that the lookups in PLIST happen before BODY is evaluated,
 so if BODY modifies PLIST, those modifications will not be
 reflected in the substituted values."
   (let ((body (cons 'progn body)))
-    (el-get--substitute-keywords (eval plist) body)))
+    (el-get-substitute-keywords (eval plist) body)))
 (put 'el-get-plist-bind 'lisp-indent-function 1)
 
 (defun el-get-read-from-file (filename)
@@ -269,6 +272,62 @@ property and a property that is set to nil."
                         (plist-get plist2 key))
         return nil
         finally return t))
+
+(defun el-get-bindable-symbol-p (object)
+  "Like `symbolp' but excludes literal symbols.
+
+Specifically, t, nil, and keywords are excluded."
+  (when (symbolp object)
+    ;; Try to bind the symbol using `let' and then retrieve its
+    ;; value. If this fails, the symbol is not bindable.
+    (ignore-errors
+      (eval
+       `(let ((,object t))
+          ,object)))))
+
+(defun el-get-validate-plist
+  (plist required-props optional-props &optional allow-extra)
+  "Validate the values of property list PLIST.
+
+Returns nil for a successful validation or a list of errors if
+validation fails.
+
+REQUIRED-PROPS and OPTIONAL-PROPS are each property lists with
+values being predicates that the corresponding properties must
+satisfy. The propertiesof PLIST listed in REQUIRED-PROPS must
+satisfy their associated predicates, while the properties in
+OPTIONAL-PROPS must either satisfy their associated predicates or
+be nil (or absent). In addition, if any properties in PLIST are
+not listed in either REQUITED-PROPS or OPTIONAL-PROPS, an error
+is raised, unless ALLOW-EXTRA is non-nil.
+
+Due to the implementation of this function, multiple predicates
+can be provided with the same property, e.g. `(:prop
+#'pred1 :prop #'pred2)', in which case PLIST's value of `:prop'
+will have to satisfy both `pred1' and `pred2'."
+  (let ((errors nil))
+    (cl-loop for (prop pred) on required-props by #'cddr
+             for value = (plist-get plist prop)
+             unless (funcall pred value)
+             do (push (format "Value of required property %s fails predicate %s"
+                              prop pred)
+                      errors))
+    (cl-loop for (prop pred) on optional-props by #'cddr
+             for value = (plist-get plist prop)
+             unless (or (null value) (funcall pred value))
+             do (push (format "Value of optional property %s fails predicate %s"
+                               prop pred)
+                      errors))
+    (let ((extra-props
+           (cl-set-difference
+            (el-get-plist-keys plist)
+            (nconc (el-get-plist-keys required-props)
+                   (el-get-plist-keys optional-props)))))
+      (when extra-props
+        (push "Extra properties provided but not allowed: %S" extra-props)))
+    ;; If no errors, this will be nil
+    (nreverse errors)))
+
 
 (provide 'el-get-internals)
 ;;; el-get-internals.el ends here

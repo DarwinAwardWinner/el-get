@@ -11,6 +11,7 @@ written in a certain order before other higher layers can be written.
 
 ## To Do
 
+* Decide how to coordinate async operations
 * Async package fetching & unpacking (just file method first, I guess)
 * Async package installation
 * Async package building
@@ -20,7 +21,8 @@ written in a certain order before other higher layers can be written.
 
 * Implement `el-get-describe-fetcher` to give descriptions of all
   properties supported by a given fetcher.
-* Lexbind
+* Enable Lexbind
+* Switch to new cl-lib?
 
 # Clerical tasks
 

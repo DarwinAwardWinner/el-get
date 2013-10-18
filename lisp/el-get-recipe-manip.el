@@ -125,7 +125,12 @@ have that name in order to validate.
 
 (defun el-get-merge-partial-recipe
   (partial-recipe full-recipe &optional nocheck)
-  "TODO DOC"
+  "Like `el-get-merge-plists', but recipes are validated.
+
+Before and after merging, FULL-RECIPE is validated using
+`el-get-validate-recipe' unless NOCHECK is non-nil. If NOCHECK is
+non-nil, this is exactly equivalent to (and compiles directly to)
+`el-get-merge-plists'."
   ;; Verify that arguments are as expected
   (unless
       (and (not nocheck)
@@ -133,8 +138,12 @@ have that name in order to validate.
                (el-get-recipe-name full-recipe))
            (null (el-get-recipe-type partial-recipe))
            (null (el-get-validate-recipe full-recipe 'noerror)))
-    (error "Need one partial recipe and one full recipe."))
-  (el-get-merge-plists partial-recipe full-recipe))
+    (el-get-error "Need one partial recipe and one full recipe."))
+  (let ((result (el-get-merge-plists partial-recipe full-recipe)))
+    (if (or nocheck
+            (null (el-get-validate-recipe result)))
+        result
+      (el-get-error "Merged recipe is invalid: %S" result))))
 ;; Skip the check at compile time if `nocheck' is a non-nil literal
 (cl-define-compiler-macro el-get-merge-partial-recipe
     (&whole form partial-recipe full-recipe &optional nocheck)
