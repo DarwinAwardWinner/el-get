@@ -329,6 +329,12 @@ Due to the implementation of this function, multiple predicates
 can be provided with the same property, e.g. `(:prop
 #'pred1 :prop #'pred2)', in which case PLIST's value of `:prop'
 will have to satisfy both `pred1' and `pred2'."
+  ;; Allow prop specs to be passed as hash tables as well as plists
+  ;; (mostly for the benefit of `el-get-validate-hash-table').
+  (when (hash-table-p required-props)
+    (setq required-props (el-get-hash-to-plist required-props)))
+  (when (hash-table-p optional-props)
+    (setq optional-props (el-get-hash-to-plist optional-props)))
   (let ((errors nil))
     (cl-loop for (prop pred) on required-props by #'cddr
              for value = (plist-get plist prop)
@@ -351,6 +357,15 @@ will have to satisfy both `pred1' and `pred2'."
         (push "Extra properties provided but not allowed: %S" extra-props)))
     ;; If no errors, this will be nil
     (nreverse errors)))
+
+(defsubst el-get-validate-hash-table
+  (table required-keys optional-keys &optional allow-extra)
+  "Same as `el-get-validate-plist' but for hash tables.
+
+REQUIRED-KEYS and OPTIONAL-KEYS may be passed as either hash
+tables or property lists."
+  (el-get-validate-plist (el-get-hash-to-plist table)
+                         required-keys optional-keys allow-extra))
 
 (defun* el-get-make-lookup-table
     (objects &key key-func (value-func #'identity) init-hash allow-nil-key)
