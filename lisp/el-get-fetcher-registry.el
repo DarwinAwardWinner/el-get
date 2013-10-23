@@ -103,7 +103,7 @@ Throws an error if the requested fetcher does not exist."
   (or (gethash type el-get-fetchers)
       (el-get-error "Fetcher type %s not registered" type)))
 
-(defsubst el-get-set-fetcher (type def)
+(defun el-get-set-fetcher (type def)
   "Set fetcher definition for TYPE to DEF.
 
 Validates DEF before setting it, raising an error if it fails to
@@ -119,6 +119,7 @@ validate."
   (when (gethash type el-get-fetchers)
     (el-get-display-warning (format "Re-registering recipe type %s" type)
                             :debug))
+  ;; If DEF was passed as a plist, convert to hash table
   (when (listp def)
     (setq def (el-get-plist-to-hash def)))
   (puthash type def el-get-fetchers))
@@ -229,7 +230,7 @@ others are optional. TODO
 
 * `:filter': TODO
 "
-  (el-get-set-fetcher (plist-get props :type) props)))
+  (el-get-set-fetcher (plist-get props :type) props))
 
 (defun el-get-register-fetcher-alias (newtype oldtype)
   "Register NEWTYPE as an alias for OLDTYPE.
