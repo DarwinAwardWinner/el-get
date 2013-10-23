@@ -170,9 +170,18 @@ adding the values from PLIST.
 
 Typically there is no reason to pass more than one argument to
 this function."
-  (let ((hash (if (hash-table-p (car make-hash-table-args))
-                  (clrhash (car make-hash-table-args))
-                (apply #'make-hash-table make-hash-table-args))))
+  (let ((hash
+         (if (hash-table-p (car make-hash-table-args))
+             ;; Use provided hash table
+             (clrhash (car make-hash-table-args))
+           ;; Remaining arguments are args to `make-hash-table'. Add
+           ;; an appropriate `:size' based on plist's size if not
+           ;; provided.
+           (progn
+             (unless (plist-get make-hash-table-args :size)
+               (plist-put make-hash-table-args
+                          :size (/ (length plist) 2)))
+             (apply #'make-hash-table make-hash-table-args)))))
     (loop for (k v) on plist by #'cddr
           do (puthash k v hash))
     hash))
@@ -245,7 +254,9 @@ reflected in the substituted values."
   "Merge PLISTS into a single property list.
 
 Properties from plists earlier in the argument list take
-precedence over the same properties in later plists."
+precedence over the same properties in later plists.
+
+The returned value is passed through `el-get-clean-plist'."
   (el-get-clean-plist (apply #'append plists)))
 
 (defsubst el-get-plist-keys (plist)
@@ -272,6 +283,19 @@ property and a property that is set to nil."
                         (plist-get plist2 key))
         return nil
         finally return t))
+
+(defun el-get-random-hash-key (hash-table)
+  "Return an arbitrary key from HASH-TABLE.
+
+Specifically, the key returned is the first key iterated over by
+`maphash'.
+
+Note that this returns nil if HASH-TABLE is empty, but it might
+also return nil if nil is a key in HASH-TABLE, so if nil is a
+valid key, you can use `hash-table-count' to determine whether
+the hash actually contains any elements."
+  (cl-block GETKEY
+    (maphash (lambda (k v) (cl-return-from GETKEY k)) hash-table)))
 
 (defun el-get-bindable-symbol-p (object)
   "Like `symbolp' but excludes literal symbols.
@@ -328,6 +352,32 @@ will have to satisfy both `pred1' and `pred2'."
     ;; If no errors, this will be nil
     (nreverse errors)))
 
+(defun* el-get-make-lookup-table
+    (objects &key key-func (value-func #'identity) init-hash allow-nil-key)
+  "Make a lookup table for list OBJECTS.
+
+For each object in OBJECTS, a key is computed using KEY-FUNC and
+a value is computed using VALUE-FUNC (default value is the object
+itself), and that value is associated with that key in the
+returned hash table.
+
+Optional keyword arg INIT-HASH, if provided, will be used as the
+hash table into which the key-value pairs will be inserted. If
+not provided, a new empty hash table will be used.
+
+If keyword arg ALLOW-NIL-KEY is nil (the default), then values
+for which KEY-FUNC returns nil will not be inserted at
+all. Otherwise, they will be inserted as normal, with a key of
+nil."
+  (declare (indent 1))
+  (loop with table = (or init-hash
+                         (make-hash-table :size (length objects)))
+        for obj in objects
+        for key = (funcall key-func obj)
+        for val = (funcall value-func obj)
+        do (when (or key allow-nil-key)
+             (puthash key obj table))
+        finally return table))
 
 (provide 'el-get-internals)
 ;;; el-get-internals.el ends here

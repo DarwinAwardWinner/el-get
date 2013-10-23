@@ -199,6 +199,23 @@ If RECIPE is already of a real type, is is returned unchanged."
         if non-recursive return recipe
         finally return recipe))
 
+(defsubst el-get-make-recipe-override-table (recipes)
+  "Convert a recipe list into an override table.
+
+An override table is a hash table mapping recipe names to full or
+partial recipe definitions.
+
+If a hash table is passed to this function, it is returned
+unchanged."
+  (cond
+   ((hash-table-p recipes)
+    recipes)
+   ((listp recipes)
+    (el-get-make-lookup-table overrides
+            :key-func (lambda (r) (el-get-recipe-name r))))
+   (t
+    (el-get-error "Not a recipe list: %S" recipes))))
+
 ;; TODO: Recipe documentation set/get
 
 (provide 'el-get-recipe-manip)
