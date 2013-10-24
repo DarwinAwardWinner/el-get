@@ -187,6 +187,7 @@ after executing BODY).
 
 BODY should not invoke any functions that might cause the lock on
 FILENAME to be released."
+  (declare (indent 1))
   (let* ((filename (eval filename))
          (arglist (if (listp filename) filename (list filename)))
          (filename (car arglist)))
@@ -199,7 +200,6 @@ FILENAME to be released."
              (el-get-acquire-file-lock ,@arglist)
              ,@body)
          (el-get-release-file-lock ,filename)))))
-(put 'el-get-with-file-lock 'lisp-indent-function 1)
 
 (provide 'el-get-lock)
 ;;; el-get-lock.el ends here

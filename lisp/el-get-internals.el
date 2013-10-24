@@ -230,9 +230,9 @@ For example, the following returns 3:
 Note that the lookups in PLIST happen before BODY is evaluated,
 so if BODY modifies PLIST, those modifications will not be
 reflected in the substituted values."
+  (declare (indent 1))
   (let ((body (cons 'progn body)))
     (el-get-substitute-keywords (eval plist) body)))
-(put 'el-get-plist-bind 'lisp-indent-function 1)
 
 (defun el-get-read-from-file (filename)
   "Read a single lisp form from FILENAME."
