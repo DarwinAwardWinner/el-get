@@ -184,18 +184,34 @@ that defines a fetcher type."
 
 ;; TODO: add a DOC argument and make it available via
 ;; `el-get-describe-package-type' or similar function.
-(defun* el-get-register-fetcher (&rest def)
-  "TODO DOC
+(defun el-get-register-fetcher (&rest def)
+  "Register a fetcher method for el-get.
 
-TODO Explain real & virtual.
+There are two kinds of fetchers, \"real\" and \"virtual\". A real
+fetcher defines a type of package and describes how to fetch,
+update, remove, and perform other actions on packages of that
+type. A virtual fetcher instead just defines a transformation
+from one type into another.
 
-A fetcher must have at least `:type' and `:fetch' attributes; all
-others are optional. TODO
+A real fetcher is registered by providing, at a minimum, `:type'
+and `:fetch' properties, while a virtual fetcher is registered by
+providing `:type' and `:filter' properties. These are described
+below.
 
-* `:fetch': This function should fetch the file(s) for the
-  package described by RECIPE into DESTDIR, such that the package
-  is ready to be built. This function is the only required
-  function to define a fetcher.
+All fetchers must have a `:type' property, whose value must be a
+symbol that is the name of the fetcher type. Possible examples
+include `git', `file', `emacswiki', `github', and `svn'. All
+fetchers *should* also provide a `:doc' property that is a
+documentation string describing how to write recipes of that
+type.
+
+Real fetchers can additionally provide any of the below:
+
+* `:fetch': This should be a function that takes two arguments,
+  RECIPE and DESTDIR. It should fetch the file(s) for the package
+  described by RECIPE into DESTDIR, such that the package is
+  ready for building. This function is the only required function
+  to define a real fetcher; all others are optional.
 
 * `:update': Same as `:fetch', but it should assume that DESTDIR
   already contains a previously-installed version of the
@@ -203,41 +219,50 @@ others are optional. TODO
   that can simply pull changes instead of re-downloading the
   entire package. If this is not provided, the package will be
   updated by deleting it and then calling the fetch function
-  again.
+  again. TODO what if the recipe changes?
 
-* `:remove': This function should uninstall the package located
-  in DESTDIR. If this is not provided, the default is to simply
-  delete the directory and all its contents. This should only be
-  provided if deleting the package directory is not sufficient to
-  uninstall the package.
+* `:remove': This function should take a single argument,
+  DESTDIR, and uninstall the package located in DESTDIR. It can
+  be assumed that the package in DESTDIR is of the type that this
+  fetcher is responsible for. If this is not provided, the
+  default remove operation is to simply delete the directory and
+  all of its contents. This should only be provided if deleting the
+  package directory is not sufficient to uninstall the package.
 
 * `:compute-checksum': This will be called only on an installed
   package in order to compute a checksum. TODO
+
+Virtual fetchers need only define a `:filter' property, whose
+value should be a function that takes one argument, RECIPE, and
+returns a recipe of a different type. For example, the `github'
+fetcher could be a virtual fetcher that simply transforms
+`github' recipes into `git' recipes, and the `emacswiki' fetcher
+could be a virtual fetcher that transforms `emacswiki' recipes
+into `file' recipes with the appropriate `:url' property.
+
+In addition, the following additional properties may be provided
+for both real and virtual fetchers:
 
 * `:auto-property': This function takes two arguments, RECIPE and
   PROPERTY, and should return an auto-generated value for that
   property. If no value can be auto-generated, it should return
   nil. It will be called to in order to fill in various metadata
   fields about the package. For example, this could be used to
-  supply-auto-generated `:description' or `:website'
-  properties. This function will only be called for properties
-  not explicitly specified by a recipe, so there is no need to
-  check if the requested property already exists.
+  supply auto-generated `:description' or `:website'
+  properties. This function will only be called for a property if
+  a recipe does not explicitly specify that property, so there is
+  no need to check if the requested property already exists.
 
 * `:validate': This function only takes a RECIPE argument and
   should verify that the recipe is valid. It should return nil
-  for a valid recipe and for an invalid recipe, it should return
+  for a valid recipe. For an invalid recipe, it should return
   either a string or a list of strings that describe all the
   problems found with the recipe. For example, if the fetcher
   requires the recipe to have a `:url' property, then the
   `:validate' function should verify that the recipe has this
   property. If not, it could return the string \"recipe must
   have :url property\". The validation function may assume that
-  it is being called o a recipe with a `:name' property and the
-  correct `:type' property.
-
-* `:filter': TODO
-"
+  the `:name' and `:type' properties have already been validated."
   (el-get-set-fetcher (plist-get props :type) props))
 
 (defun el-get-register-fetcher-alias (newtype oldtype)
