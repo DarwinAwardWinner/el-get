@@ -30,12 +30,15 @@
 
 (defconst el-get-fetcher-required-props
   (list :type #'el-get-bindable-symbol-p
-        :fetch #'functionp)
+        :fetch #'functionp
+        ;; Must not have a :filter
+        :filter #'null)
   "Plist of required fetcher properties.
 
 Each property in this list is a property that must be provided to
 `el-get-register-fetcher', and that property's value in this list
-is a predicate for the provided value to satisfy.")
+is a predicate for the provided value to satisfy. (Null means
+that the property must *not* be provided.)")
 
 (defconst el-get-fetcher-optional-props
   (list :update #'functionp
@@ -52,12 +55,17 @@ is a predicate for the provided value to satisfy.")
 
 (defconst el-get-virtual-fetcher-required-props
   (list :type #'el-get-bindable-symbol-p
-        :filter #'functionp)
+        :filter #'functionp
+        ;; Must not have a :fetch, :update, or :remove
+        :fetch #'null
+        :update #'null
+        :remove #'null)
   "Plist of required fetcher properties.
 
 Each property in this list is a property that must be provided to
 `el-get-register-fetcher', and that property's value in this list
-is a predicate for the provided value to satisfy.")
+is a predicate for the provided value to satisfy. (Null means
+that the property must *not* be provided.)")
 
 (defconst el-get-virtual-fetcher-optional-props
   (list :auto-property #'functionp
