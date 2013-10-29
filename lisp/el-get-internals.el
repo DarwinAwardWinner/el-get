@@ -14,20 +14,6 @@
 
 (require 'cl)
 
-(defconst el-get-base-directory
-  ;; This should give the right path whether this file is being
-  ;; loaded, or this form is being evalled via e.g. C-x C-e.
-  (expand-file-name
-   ".."
-   (file-name-directory
-    (or load-file-name
-        (locate-library "el-get-internals")
-        (when (string-match-p "el-get-internals.el\\'"
-                              (buffer-file-name))
-          (buffer-file-name))
-        (error "Cannot determine path to el-get."))))
-  "Base directory of el-get installation.")
-
 (defsubst el-get-arg-is-literal-or-quoted (arg)
   "Return non-nil if ARG is a quoted form or a literal.
 
@@ -310,7 +296,7 @@ Specifically, t, nil, and keywords are excluded."
           ,object)))))
 
 (defun el-get-validate-plist
-  (plist required-props optional-props &optional allow-extra)
+  (plist required-props &optional optional-props allow-extra)
   "Validate the values of property list PLIST.
 
 Returns nil for a successful validation or a list of errors if
@@ -329,6 +315,7 @@ Due to the implementation of this function, multiple predicates
 can be provided with the same property, e.g. `(:prop
 #'pred1 :prop #'pred2)', in which case PLIST's value of `:prop'
 will have to satisfy both `pred1' and `pred2'."
+  (declare (indent defun))
   ;; Allow prop specs to be passed as hash tables as well as plists
   ;; (mostly for the benefit of `el-get-validate-hash-table').
   (when (hash-table-p required-props)
@@ -393,6 +380,20 @@ nil."
         do (when (or key allow-nil-key)
              (puthash key obj table))
         finally return table))
+
+(defun el-get-nonempty-string-p (str)
+  "Return STR if it is a string of length 1 or more, nil otherwise."
+  (and (stringp str)
+       (> (length str) 0)
+       str))
+
+(defun el-get-ensure-suffix (str suffix)
+  "If STR does not end in SUFFIX, append it."
+  (if (string-match-p
+       (concat (regexp-quote suffix) "\\'")
+       str)
+      str
+    (concat str suffix)))
 
 (provide 'el-get-internals)
 ;;; el-get-internals.el ends here

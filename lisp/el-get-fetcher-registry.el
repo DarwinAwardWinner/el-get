@@ -229,8 +229,8 @@ Real fetchers can additionally provide any of the below:
   all of its contents. This should only be provided if deleting the
   package directory is not sufficient to uninstall the package.
 
-* `:compute-checksum': This will be called only on an installed
-  package in order to compute a checksum. TODO
+* `:compute-checksum': TODO What arguments does it receive? When
+  is it called?
 
 Virtual fetchers need only define a `:filter' property, whose
 value should be a function that takes one argument, RECIPE, and
@@ -263,6 +263,7 @@ for both real and virtual fetchers:
   property. If not, it could return the string \"recipe must
   have :url property\". The validation function may assume that
   the `:name' and `:type' properties have already been validated."
+  (declare (indent defun))
   (el-get-set-fetcher (plist-get props :type) props))
 
 (defun el-get-register-fetcher-alias (newtype oldtype)

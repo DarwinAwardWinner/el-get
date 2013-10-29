@@ -216,6 +216,72 @@ unchanged."
    (t
     (el-get-error "Not a recipe list: %S" recipes))))
 
+(defun el-get-substitute-recipe-keywords (recipe expr)
+  "Replace all keywords in EXPR with their values from RECIPE.
+
+Note that auto-generated values are used too.
+
+If a keyword in EXPR is missing from RECIPE, it will be replaced
+with nil. Quoted forms are not modified."
+  (cond
+   ((keywordp expr)
+    (el-get-recipe-get recipe expr))
+   ((and (consp expr)
+         ;; Don't recurse into quoted forms
+         (not (eq (car expr) 'quote)))
+    (cons (el-get-substitute-keywords recipe (car expr))
+          (el-get-substitute-keywords recipe (cdr expr))))
+   (expr)))
+
+(defmacro el-get-recipe-bind (recipe &rest body)
+  "Eval BODY after replacing all keywords with their values in RECIPE.
+
+This is identical to `el-get-plist-bind' except that
+automatically generated recipe properties are also included."
+  (declare (indent 1))
+  (let ((body (cons 'progn body)))
+    (el-get-substitute-recipe-keywords (eval recipe) body)))
+
+(defun el-get-validate-recipe-properties
+  (recipe required-props &optional optional-props allow-extra)
+  "Validate the values of properties in RECIPE.
+
+Returns nil for a successful validation or a list of errors if
+validation fails.
+
+This is equivalent to `el-get-validate-plist' except that it can
+also validate automatically-generated recipe properties, and
+ALLOW-EXTRA is always true since recipes always allow arbitrary
+additional properties."
+  (declare (indent defun))
+  ;; Allow prop specs to be passed as hash tables as well as plists.
+  (when (hash-table-p required-props)
+    (setq required-props (el-get-hash-to-plist required-props)))
+  (when (hash-table-p optional-props)
+    (setq optional-props (el-get-hash-to-plist optional-props)))
+  (let ((errors nil))
+    (cl-loop for (prop pred) on required-props by #'cddr
+             for value = (el-get-recipe-get recipe prop)
+             unless (funcall pred value)
+             do (push (format "Recipe's value of required property %s fails predicate %s"
+                              prop pred)
+                      errors))
+    (cl-loop for (prop pred) on optional-props by #'cddr
+             for value = (el-get-recipe-get recipe prop)
+             unless (or (null value) (funcall pred value))
+             do (push (format "Recipe's value of optional property %s fails predicate %s"
+                               prop pred)
+                      errors))
+    (let ((extra-props
+           (cl-set-difference
+            (el-get-plist-keys plist)
+            (nconc (el-get-plist-keys required-props)
+                   (el-get-plist-keys optional-props)))))
+      (when extra-props
+        (push "Extra properties provided but not allowed: %S" extra-props)))
+    ;; If no errors, this will be nil
+    (nreverse errors)))
+
 ;; TODO: Recipe documentation set/get
 
 (provide 'el-get-recipe-manip)
