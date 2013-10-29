@@ -17,9 +17,17 @@
 ;;; Code:
 
 (require 'cl)
+(require 'el-get-internals)
 
 (defvar el-get-active-locks ()
   "List of buffers currently locking files.")
+
+(defun el-get-holding-file-lock (filename)
+  "Returns t if current Emacs holds the lock to FILENAME.
+
+If FILENAME is not locked or is locked by a different Emacs
+process, returns nil."
+  (eq (file-locked-p filename) t))
 
 (defsubst el-get-locking-buffer-name (filename)
   "Return the buffer name used to lock FILENAME.
@@ -29,13 +37,15 @@ lock it is returned."
   (format " * El-get-lock: %s*" filename))
 
 (defsubst el-get-locking-buffer (filename)
-  "Return the buffer used to lock FILENAME."
+  "Return the buffer used to lock FILENAME if it exists"
   (get-buffer (el-get-locking-buffer-name filename)))
 
 (defun el-get-setup-locking-buffer (filename)
   "Set up locking buffer for FILENAME and return it.
 
-If a locking buffer already exists for FILENAME, return it.
+If a locking buffer already exists for FILENAME, it is
+returned (and no setup is performed). Otherwise, the locking
+buffer is created, set up, and returned.
 
 This does not actually lock the file."
   (with-current-buffer (get-buffer-create (el-get-locking-buffer-name filename))
@@ -100,51 +110,73 @@ depends on the value of WAIT:
 
 For any non-nil value of WAIT, INTERVAL determines how frequently
 Emacs checks the lock for availability. The default is 0.1
-seconds between checks."
-  (if wait
-      (condition-case nil
-          ;; First try at locking the file
-          (el-get-acquire-file-lock filename)
-        ;; If it's already locked, begin the waiting cycle.
-        (file-locked
-         (if (numberp wait)
-             ;; Wait specified number of seconds, checking every
-             ;; INTERVAL seconds.
-             (let* ((wait-until-time
-                     (time-add (current-time)
-                               (seconds-to-time wait))))
-               (loop while (time-less-p (current-time) wait-until-time)
-                     do (sit-for interval)
+seconds between checks.
+
+Note that FILENAME does not need to exist, and if it does not
+exist, locking it will not create it. Furthermore, it is ok to
+pass a directory for FILENAME; everything will work as
+normal. However, the parent directory of FILENAME must exist, and
+Emacs must have write permission on this directory, since that is
+where the lock file will be created."
+  (unless (file-exists-p (file-name-directory filename))
+    (el-get-error
+     "Unable to lock file %S because its containing directory does not exist."
+     filename))
+  (prog1
+      (if wait
+          (condition-case nil
+              ;; First try at locking the file
+              (el-get-acquire-file-lock filename)
+            ;; If it's already locked, begin the waiting cycle.
+            (file-locked
+             (if (numberp wait)
+                 ;; Wait specified number of seconds, checking every
+                 ;; INTERVAL seconds.
+                 (let* ((wait-until-time
+                         (time-add (current-time)
+                                   (seconds-to-time wait))))
+                   (loop while (time-less-p (current-time) wait-until-time)
+                         do (sit-for interval)
+                         for lockbuf =
+                         (condition-case nil
+                             (el-get-acquire-file-lock filename)
+                           (file-locked nil))
+                         if lockbuf return lockbuf
+                         ;; Try one last time, without catching the error
+                         finally return (el-get-acquire-file-lock filename)))
+               ;; Wait non-numeric non-nil; wait forever
+               (loop do (sit-for interval)
                      for lockbuf =
                      (condition-case nil
                          (el-get-acquire-file-lock filename)
                        (file-locked nil))
-                     if lockbuf return lockbuf
-                     ;; Try one last time, without catching the error
-                     finally return (el-get-acquire-file-lock filename)))
-           ;; Wait non-numeric non-nil; wait forever
-           (loop do (sit-for interval)
-                 for lockbuf =
-                 (condition-case nil
-                     (el-get-acquire-file-lock filename)
-                   (file-locked nil))
-                 if lockbuf
-                 return lockbuf))))
-    ;; No waiting, try to lock the locking buffer.
-    (with-current-buffer (el-get-setup-locking-buffer filename)
-      (set-buffer-modified-p t)
-      (el-get-lock-buffer-if-unlocked filename)
-      (setq el-get-active-locks (cons (current-buffer) el-get-active-locks))
-      (current-buffer))))
+                     if lockbuf
+                     return lockbuf))))
+        ;; No waiting, try to lock the locking buffer.
+        (with-current-buffer (el-get-setup-locking-buffer filename)
+          (set-buffer-modified-p t)
+          (el-get-lock-buffer-if-unlocked filename)
+          (push (current-buffer) el-get-active-locks)
+          (current-buffer)))
+    ;; Make sure we're actually holding the lock before returning
+    (unless (el-get-holding-file-lock filename)
+      (el-get-error "Failed to acquire lock on file %S" filename))))
 
-(defun el-get-release-file-lock (filename)
+(defun el-get-release-file-lock (filename &optional warn-if-unlocked)
   "Release any lock held on FILENAME.
 
 If FILENAME is not locked by the current Emacs process, this does
 nothing.
 
 FILENAME can also be a locking buffer, in which case the
-asociated file will be unlocked."
+asociated file will be unlocked.
+
+With optional second arg WARN-IF-UNLOCKED, a warning will be
+issued if FILENAME is not locked when this function is called."
+  (unless (el-get-holding-file-lock filename)
+            (when warn-if-unlocked
+              (el-get-display-warning "File %S was already unlocked"
+                                      filename)))
   (let ((lockbuf
          (if (bufferp filename)
              (when (el-get-locking-buffer-p filename) filename)
@@ -163,13 +195,6 @@ Use only in emergencies."
   ;; TODO lock-related debug messages
   (while el-get-active-locks
     (el-get-release-file-lock (car el-get-active-locks))))
-
-(defun el-get-holding-file-lock (filename)
-  "Returns t if current Emacs holds the lock to FILENAME.
-
-If FILENAME is not locked or is locked by a different Emacs
-process, returns nil."
-  (eq (file-locked-p filename) t))
 
 (defmacro el-get-with-file-lock (filename &rest body)
   "Execute BODY while holding the lock on FILENAME.
