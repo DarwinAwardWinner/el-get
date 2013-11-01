@@ -64,8 +64,8 @@ TODO DOC Explain rules for conflicting recipes"
          (file-name-sans-extension (file-name-nondirectory filename))))
     (el-get-validate-recipe recipe nil expected-name)
     (with-temp-buffer
-      (insert (format ";; %s\n" (file-name-nondirectory filename))
-              ";; -*- mode: emacs-lisp -*-\n"
+      (insert (format ";; Recipe for %s -*- mode: emacs-lisp -*-\n"
+                      (file-name-nondirectory filename))
               (el-get-print-to-string recipe 'pretty))
       (write-file filename))))
 
