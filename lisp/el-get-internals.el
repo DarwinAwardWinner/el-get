@@ -395,5 +395,31 @@ nil."
       str
     (concat str suffix)))
 
+(defun el-get-ensure-directory (path)
+  "Ensure that PATH exists and is a directory.
+
+If PATH does not exist, it is created, and any nonexistent parent
+directories are created as well. If PATH already exists and is
+not a directory, or if Emacs does not have the necessary
+permissions for one of the parent directories, an error is
+returned."
+  (make-directory path t)
+  (unless (file-directory-p path)
+    (el-get-error "Could not create directory at path %S" path)))
+
+(defsubst el-get-delete-directory-contents (dir)
+  "If DIR exists and is a directory, delete its contents."
+  (when (file-directory-p dir)
+    (loop for f in (directory-files dir t nil t)
+          do (if (file-directory-p f)
+                 (delete-directory f t)
+               (delete-file f)))))
+
+(defun el-get-file-basename-p (filename)
+  "Return non-nil if FILENAME contains no directory separators.
+
+In other words, FILENAME should be just a basename of a file."
+  (not (file-name-directory filename)))
+
 (provide 'el-get-internals)
 ;;; el-get-internals.el ends here
