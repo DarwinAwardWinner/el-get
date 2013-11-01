@@ -1,7 +1,7 @@
 (setq
  ;; warning-minimum-level :debug
  ;; warning-minimum-log-level :debug
- debug-on-error t)
+ debug-on-error nil)
 
 
 (setq
@@ -22,14 +22,20 @@
 (require 'el-get-noop-fetcher)
 (require 'el-get-testvirt-fetcher)
 
+(require 'el-get-dependencies)
+;; (show-value (el-get-fetcher-op 'noop :fetch))
 
-(show-value (el-get-fetcher-op 'noop :fetch))
+;; (show-value (el-get-resolve-recipe 'recipe1))
+;; (show-value (el-get-resolve-recipe 'recipe2))
+;; (show-value (el-get-resolve-recipe 'recipe2 :devirtualize t))
+;; (show-value (el-get-resolve-recipe "recipe2" :devirtualize t))
+;; (show-value (el-get-resolve-recipe '(:name recipe4 :type no-op) t))
+;; (show-value (el-get-fetcher-op
+;;              (el-get-devirtualize-recipe-def '(:name recipe3 :type null))
+;;              :fetch))
 
-(show-value (el-get-resolve-recipe 'recipe1))
-(show-value (el-get-resolve-recipe 'recipe2))
-(show-value (el-get-resolve-recipe 'recipe2 'devirtualized))
-(show-value (el-get-resolve-recipe "recipe2" 'devirtualized))
-(show-value (el-get-resolve-recipe '(:name recipe4 :type no-op) t))
-(show-value (el-get-fetcher-op
-             (el-get-devirtualize-recipe-def '(:name recipe3 :type null))
-             :fetch))
+(show-value
+ (el-get-dependency-graph '((:name a :type noop :depends (b c d))
+                            (:name b :type noop)
+                            (:name c :type noop)
+                            (:name d :type noop))))
