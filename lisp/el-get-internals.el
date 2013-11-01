@@ -223,8 +223,8 @@ reflected in the substituted values."
 (defun el-get-read-from-file (filename)
   "Read a single lisp form from FILENAME."
   (with-temp-buffer
-        (insert-file-contents filename)
-        (read (current-buffer))))
+    (insert-file-contents filename)
+    (read (current-buffer))))
 
 (defun el-get-clean-plist (plist)
   "Remove any duplicate properties from PLIST."
