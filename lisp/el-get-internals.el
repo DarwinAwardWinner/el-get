@@ -421,5 +421,29 @@ returned."
 In other words, FILENAME should be just a basename of a file."
   (not (file-name-directory filename)))
 
+;; Better indentation for recipes and status plists
+(defun el-get-plist-indent-function (pos state)
+  "Indentation function for property lists
+
+This function can be used as `(put KEYWORD 'lisp-indent-function
+el-get-plist-indent-function)'. Then any list with KEYWORD as its
+first argument will have all its lines indented to the same depth
+as the first line. This is useful to set for keywords that will
+be used as the first elements in property lists. It changes
+this:
+
+    '(:prop1 value1
+             :prop2 value2)
+
+into this:
+
+    '(:prop1 value1
+      :prop2 value2)"
+  (save-excursion
+    (goto-char (nth 1 state))
+    (list (1+ (- (point) (progn (move-beginning-of-line 1) (point)))))))
+(loop for prop in '(:name :type :status)
+      do (put prop 'lisp-indent-function #'el-get-plist-indent-function))
+
 (provide 'el-get-internals)
 ;;; el-get-internals.el ends here
