@@ -50,3 +50,22 @@
 ;; longer be supported, although they could be supported by preparing
 ;; an install script ("apt-get install A B C ...") and giving the user
 ;; a shortcut to run it.
+
+
+
+
+
+;; Idea: async processes return a plist describing what they did and
+;; whether they were successful, etc.; handler function parses the
+;; resulting plist and takes appropriate action, e.g. after successful
+;; fetch, move package from "install-blocked" queue to "install-ready"
+;; queue. Write the handler functions first.
+
+
+;; Terminology:
+
+;; * Package:
+
+;; * Recipe:
+
+;; *
