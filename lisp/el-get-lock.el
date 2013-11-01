@@ -202,7 +202,8 @@ Use only in emergencies."
 FILENAME may be string, or it may be a list of arguments
 `(FILENAME &optional wait interval)' that will be passed directly
 to `el-get-acquire-file-lock', which can be used to specify a
-timeout.
+timeout. (Note that although this form is a macro, FILENAME is
+evaluated normally.)
 
 Signals a `file-locked' error if the lock cannot be acquired.
 
