@@ -26,6 +26,7 @@
 
 (require 'cl)
 (require 'async)
+(require 'el-get-variables)
 
 ;; TODO Move to appropriate place
 (defconst el-get-emacs (concat invocation-directory invocation-name)
@@ -74,7 +75,8 @@ TODO DOC"
              (mapc #'require ',require-features)
              (mapc #'load ',load-files)
              (setq ,@export-variables
-                   default-directory ,subproc-default-directory)
+                   default-directory ,subproc-default-directory
+                   el-get-in-subprocess t)
              ,expr)))
     (async-start `(lambda () ,full-expr) finish-func)))
 

@@ -13,6 +13,7 @@
 ;;; Code:
 
 (require 'cl)
+(require 'el-get-variables)
 
 (defsubst el-get-arg-is-literal-or-quoted (arg)
   "Return non-nil if ARG is a quoted form or a literal.
@@ -420,6 +421,19 @@ returned."
 
 In other words, FILENAME should be just a basename of a file."
   (not (file-name-directory filename)))
+
+(defsubst el-get-warn-unless-in-subprocess (&optional function-name)
+  "Show a warning unless called from an El-get subprocess.
+
+This function should be called at the beginning of any function
+that is intended to be called only within an asynchronous
+subprocess. Optional argument is the name of the function, which
+is used to make the warning message more informative."
+  (unless el-get-in-subprocess
+    (el-get-display-warning
+     (if function-name
+         (format "Subprocess-only function %s called in main process" function-name)
+       "Subprocess-only function called in main process"))))
 
 ;; Better indentation for recipes and status plists
 (defun el-get-plist-indent-function (pos state)
