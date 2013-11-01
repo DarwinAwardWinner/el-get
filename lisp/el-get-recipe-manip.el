@@ -85,9 +85,7 @@ which case it simply returns the list of validation errors
 encountered.
 
 If optional arg EXPECTED-NAME is provided, then the recipe must
-have that name in order to validate.
-
-"
+have that name in order to validate."
   (let ((errors nil))
     (condition-case err
         (progn
@@ -122,6 +120,13 @@ have that name in order to validate.
         ;; Raise an error
         (error "Errors encountered while validating recipe:\n%s"
                (mapconcat #'identity errors "\n"))))))
+
+(defsubst el-get-recipe-valid-p (recipe &optional expected-name)
+  "Standard predicate form of `el-get-validate-recipe'.
+
+Returns t for a valid recipe and nil otherwise. The list of
+specific validation errors is discarded."
+  (not (el-get-validate-recipe recipe 'noerror expected-name)))
 
 (defun el-get-merge-partial-recipe
   (partial-recipe full-recipe &optional nocheck)
