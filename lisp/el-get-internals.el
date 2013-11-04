@@ -396,7 +396,7 @@ nil."
       str
     (concat str suffix)))
 
-(defun el-get-ensure-directory (path)
+(defsubst el-get-ensure-directory (path)
   "Ensure that PATH exists and is a directory.
 
 If PATH does not exist, it is created, and any nonexistent parent
@@ -408,15 +408,36 @@ returned."
   (unless (file-directory-p path)
     (el-get-error "Could not create directory at path %S" path)))
 
-(defsubst el-get-delete-directory-contents (dir)
-  "If DIR exists and is a directory, delete its contents."
-  (when (file-directory-p dir)
-    (loop for f in (directory-files dir t nil t)
-          do (if (file-directory-p f)
-                 (delete-directory f t)
-               (delete-file f)))))
+(defun el-get-delete-directory-contents (dir &optional force)
+  "If DIR exists and is a directory, delete its contents.
 
-(defun el-get-file-basename-p (filename)
+Unless optional arg FORCE is non-nil, this function will only
+operate on subdirectories of `el-get-install-dir'."
+  (when (file-directory-p dir)
+    (let ((dir (expand-file-name dir)))
+      (or force
+          ;; Check that DIR is a subdir of `el-get-install-dir'
+          (string-prefix-p el-get-install-dir
+                           (file-name-directory dir))
+          (error "Directory %S is not a subdirectory of El-get install directory %S; Use the FORCE argument if necessary"
+                 dir el-get-install-dir))
+      (loop
+       for f in (directory-files dir t nil t)
+       do (cond
+           ;; Don't delete the dir itself or its parent
+           ((member (file-name-nondirectory f) '("." ".."))
+            ;; Do nothing
+            nil)
+           ;; Check symlink before dir
+           ((file-symlink-p f)
+            (delete-file f))
+           ((file-directory-p f)
+            (delete-directory f t))
+           ;; Anything else is a regular file
+           (t
+            (delete-file f))))))
+
+(defsubst el-get-file-basename-p (filename)
   "Return non-nil if FILENAME contains no directory separators.
 
 In other words, FILENAME should be just a basename of a file."
@@ -432,7 +453,8 @@ is used to make the warning message more informative."
   (unless el-get-in-subprocess
     (el-get-display-warning
      (if function-name
-         (format "Subprocess-only function %s called in main process" function-name)
+         (format "Subprocess-only function %s called in main process"
+                 function-name)
        "Subprocess-only function called in main process"))))
 
 ;; Better indentation for recipes and status plists
