@@ -90,24 +90,20 @@ removed from GRAPH."
   (let ((deps (gethash start graph :notfound)))
     (prog1
         (cond
-         ;; If START isn't present in GRAPH, return empty list (not even
-         ;; just START). A package without no dependencies would be
+         ;; If START isn't present in GRAPH, return empty list (not
+         ;; even just START). A package with no dependencies would be
          ;; present with a nil dependency list, not absent entirely.
          ((eq deps :notfound)
           nil)
-         ;; Empty dependency list: return just start
-         ((null deps)
-          (list start))
-         ;; Non-empty dependency list: recurse into all dependencies
-         ((consp deps)
+         ;; START is present, so process it and its dependencies
+         ((listp deps)
           (nconc
-           (nconc
-            ;; Recurse into all dependencies (if any).
-            (mapcan (lambda (dep)
-                      (el-get-extract-dependency-list dep graph))
-                    deps)
-            ;; And add START to the list as well, after its deps.
-            (list start)))))
+           ;; Recurse into all dependencies (if any).
+           (mapcan (lambda (dep)
+                     (el-get-extract-dependency-list dep graph))
+                   deps)
+           ;; And add START to the list as well, after its deps.
+           (list start))))
       ;; finally delete START from GRAPH
       (remhash start graph))))
 
@@ -132,7 +128,7 @@ is left intact."
         into deplist
         finally return deplist))
 
-(defun el-get-dependency-list (recipes &rest el-get-dep-graph-args)
+(defsubst el-get-dependency-list (recipes &rest el-get-dep-graph-args)
   "Return a list of all dependencies for RECIPES.
 
 The return list will be ordered such that each package's
