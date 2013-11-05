@@ -140,5 +140,27 @@ Additional keyword arguments are passed to `el-get-dependency-graph'."
   (el-get-linearize-dependency-graph
    (apply #'el-get-dependency-graph recipes el-get-dep-graph-args)))
 
+(defun el-get-reverse-dependency-graph (graph)
+  "Reverse every relationship in GRAPH.
+
+The result is the graph of reverse dependencies for the packages
+in GRAPH."
+  (when copy
+    (setq graph (copy-hash-table graph)))
+  (let ((revgraph (make-hash-table :size (hash-table-count graph))))
+    (maphash
+     (lambda (pkg deps)
+       (loop for dep in deps
+             ;; Make sure pkg exists in revgraph (this sets it to nil
+             ;; if it doesn't exist).
+             do (puthash pkg (gethash pkg revgraph) revgraph)
+             ;; Add pkg as a dependency of dep (i.e. reverse of normal)
+             do (puthash
+                 dep
+                 (cons pkg (gethash dep revgraph))
+                 revgraph)))
+     graph)
+    revgraph))
+
 (provide 'el-get-dependencies)
 ;;; el-get-dependencies.el ends here
