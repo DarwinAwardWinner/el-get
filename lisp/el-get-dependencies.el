@@ -69,18 +69,18 @@ not-yet-installed pacakges, you could use
     (loop while remaining-deps
           for next-pkg = (pop remaining-deps)
           if (not (or (gethash next-pkg dephash)
-                      (funcall skip-p next-pkg))) do
-                      (let* ((next-recipe
-                              (el-get-resolve-recipe next-pkg
-                                :overrides overrides))
-                             (next-recipe-deps
-                              (el-get-package-dependencies next-recipe)))
-                        (puthash next-pkg
-                                 next-recipe-deps
-                                 dephash)
-                        (setq remaining-deps
-                              (append next-recipe-deps remaining-deps)))
-                      finally return dephash)))
+                      (funcall skip-p next-pkg)))
+          do (let* ((next-recipe
+                     (el-get-resolve-recipe next-pkg
+                                            :overrides overrides))
+                    (next-recipe-deps
+                     (el-get-package-dependencies next-recipe)))
+               (puthash next-pkg
+                        next-recipe-deps
+                        dephash)
+               (setq remaining-deps
+                     (append next-recipe-deps remaining-deps)))
+          finally return dephash)))
 
 (defun el-get-extract-dependency-list (start graph)
   "Extract the full linear dependency list of START in GRAPH.
