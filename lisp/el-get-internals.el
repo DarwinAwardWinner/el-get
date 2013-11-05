@@ -435,7 +435,7 @@ operate on subdirectories of `el-get-install-dir'."
             (delete-directory f t))
            ;; Anything else is a regular file
            (t
-            (delete-file f))))))
+            (delete-file f)))))))
 
 (defsubst el-get-file-basename-p (filename)
   "Return non-nil if FILENAME contains no directory separators.
