@@ -24,20 +24,6 @@
 
 ;;; Code:
 
-(defconst el-get-base-directory
-  ;; This should give the right path whether this file is being
-  ;; loaded, or this form is being evalled via e.g. C-x C-e.
-  (expand-file-name
-   ".."
-   (file-name-directory
-    (or load-file-name
-        (locate-library "el-get-internals")
-        (when (string-match-p "el-get-internals.el\\'"
-                              buffer-file-name)
-          buffer-file-name)
-        (error "Cannot determine path to el-get."))))
-  "Base directory of el-get installation.")
-
 ;; TODO: Write function to copy the install dir to a new location,
 ;; then change this variable, then delete the old location.
 (defvar el-get-install-dir

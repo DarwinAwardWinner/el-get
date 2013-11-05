@@ -69,3 +69,48 @@
 ;; * Recipe:
 
 ;; *
+
+(defconst el-get-base-directory
+  ;; This should give the right path whether this file is being
+  ;; loaded, or this form is being evalled via e.g. C-x C-e.
+  (expand-file-name
+   ".."
+   (file-name-directory
+    (or load-file-name
+        (locate-library "el-get-internals")
+        (when (string-match-p "el-get-internals.el\\'"
+                              buffer-file-name)
+          buffer-file-name)
+        (error "Cannot determine path to el-get."))))
+  "Base directory of el-get installation.")
+
+(message "El-get base directory: %S" el-get-base-directory)
+
+
+(add-to-list 'load-path (expand-file-name
+                         "async"
+                         (expand-file-name "contrib" el-get-base-directory)))
+(add-to-list 'load-path (expand-file-name "lisp" el-get-base-directory))
+(add-to-list 'load-path (expand-file-name
+                         "fetchers"
+                         (expand-file-name "lisp" el-get-base-directory)))
+
+(message "Load-path with el-get: %S" load-path)
+
+(defun require-verbose (feature &rest args)
+  (message "Requiring feature %s" feature)
+  (apply #'require feature args)
+  (message "Successfully required feature %s" feature))
+;; TODO: autoload everything instead
+(require-verbose 'el-get-variables)
+(require-verbose 'el-get-internals)
+(require-verbose 'async)
+(require-verbose 'el-get-async)
+(require-verbose 'el-get-fetcher-registry)
+(require-verbose 'el-get-recipe-manip)
+(require-verbose 'el-get-recipe-io)
+(require-verbose 'el-get-lock)
+
+(message "Finished loading El-get!")
+
+(provide 'el-get)
