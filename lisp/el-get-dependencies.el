@@ -140,6 +140,7 @@ Additional keyword arguments are passed to `el-get-dependency-graph'."
   (el-get-linearize-dependency-graph
    (apply #'el-get-dependency-graph recipes el-get-dep-graph-args)))
 
+;; TODO Test this
 (defun el-get-reverse-dependency-graph (graph)
   "Reverse every relationship in GRAPH.
 
