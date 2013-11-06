@@ -76,6 +76,21 @@ as property lists.")
 TODO link to additional doc"
   (el-get-recipe-get recipe :auto-generated))
 
+(defun el-get-validate-recipe-properties
+  (recipe required-props &optional optional-props)
+  "Validate the values of properties in RECIPE.
+
+Returns nil for a successful validation or a list of errors if
+validation fails.
+
+This is equivalent to `el-get-validate-plist' except that it can
+also validate automatically-generated recipe properties, and
+ALLOW-EXTRA is always true since recipes always allow arbitrary
+additional properties."
+  (declare (indent defun))
+  (el-get-validate-collection recipe #'ignore #'el-get-recipe-get
+    required-props optional-props t))
+
 (defun el-get-validate-recipe (recipe &optional noerror expected-name)
   "Checks if recipe looks valid.
 
@@ -90,24 +105,22 @@ have that name in order to validate."
     (condition-case err
         (progn
           ;; Type-independent validation
-          (unless (el-get-recipe-name recipe)
-            (add-to-list 'errors "Recipe has no name" 'append))
-          (unless (string= (symbol-name (el-get-recipe-name recipe))
-                           (el-get-as-string expected-name))
-            (add-to-list 'errors
-                         (format "Recipe has name %S but expected name was %S"
-                                 (el-get-recipe-name recipe) expected-name)
-                         'append))
-          (unless (el-get-recipe-type recipe)
-            (add-to-list 'errors "Recipe has no type" 'append))
+          (setq errors
+                (el-get-validate-recipe-properties recipe
+                  `(:name
+                    ,(if expected-name
+                         (apply-partially #'string= expected-name)
+                       #'stringp)
+                    :type #'el-get-bindable-symbol-p)
+                  nil 'allow-extra)
           ;; Type-specific validation, only if we passed the above
           (unless errors
             (setq errors
                   (el-get-as-list
                    (funcall (or (el-get-fetcher-op recipe :validate)
                                 #'ignore)
-                            recipe)))))
-      ;; If the above code actually throws any errors, record that in
+                            recipe))))))
+      ;; If the above code actually throws an error, record that in
       ;; the error list.
       (error (add-to-list
               'errors
@@ -246,46 +259,6 @@ automatically generated recipe properties are also included."
   (declare (indent 1))
   (let ((body (cons 'progn body)))
     (el-get-substitute-recipe-keywords (eval recipe) body)))
-
-(defun el-get-validate-recipe-properties
-  (recipe required-props &optional optional-props allow-extra)
-  "Validate the values of properties in RECIPE.
-
-Returns nil for a successful validation or a list of errors if
-validation fails.
-
-This is equivalent to `el-get-validate-plist' except that it can
-also validate automatically-generated recipe properties, and
-ALLOW-EXTRA is always true since recipes always allow arbitrary
-additional properties."
-  (declare (indent defun))
-  ;; Allow prop specs to be passed as hash tables as well as plists.
-  (when (hash-table-p required-props)
-    (setq required-props (el-get-hash-to-plist required-props)))
-  (when (hash-table-p optional-props)
-    (setq optional-props (el-get-hash-to-plist optional-props)))
-  (let ((errors nil))
-    (cl-loop for (prop pred) on required-props by #'cddr
-             for value = (el-get-recipe-get recipe prop)
-             unless (funcall pred value)
-             do (push (format "Recipe's value of required property %s fails predicate %s"
-                              prop pred)
-                      errors))
-    (cl-loop for (prop pred) on optional-props by #'cddr
-             for value = (el-get-recipe-get recipe prop)
-             unless (or (null value) (funcall pred value))
-             do (push (format "Recipe's value of optional property %s fails predicate %s"
-                               prop pred)
-                      errors))
-    (let ((extra-props
-           (cl-set-difference
-            (el-get-plist-keys plist)
-            (nconc (el-get-plist-keys required-props)
-                   (el-get-plist-keys optional-props)))))
-      (when extra-props
-        (push "Extra properties provided but not allowed: %S" extra-props)))
-    ;; If no errors, this will be nil
-    (nreverse errors)))
 
 ;; TODO: Recipe documentation set/get
 

@@ -255,6 +255,12 @@ Duplicates are removed."
          collect k)
    :test #'eq))
 
+(defsubst el-get-hash-table-keys (table)
+  "Return a list of all keys in hash table TABLE."
+  (let (keys)
+    (maphash (lambda (k v) (push k keys)) table)
+    keys))
+
 (defun* el-get-plists-equal (plist1 plist2 &optional (value-test #'equal))
   "Return non-nil if PLIST1 and PLIST2 have the same properties and values.
 
@@ -296,7 +302,57 @@ Specifically, t, nil, and keywords are excluded."
        `(let ((,object t))
           ,object)))))
 
-(defun el-get-validate-plist
+(defun el-get-validate-collection (collection
+                                   lister getter required-props optional-props
+                                   allow-extra)
+  "Validate elements of a collection.
+
+This is a low-level general function used to implement
+`el-get-validate-plist' and similar functions.  Args are as
+follows:
+
+* COLLECTION: The collection to be validated
+
+* LISTER: A function that will list all the elements in the
+  collection.
+
+* GETTER: A function that will take two args COLLECTION and KEY
+  and returns the value for that key in the collection.
+
+* REQUIRED-PROPS, OPTIONAL-PROPS, ALLOW-EXTRA: See
+  `el-get-validate-plist'."
+  (declare (indent defun))
+  ;; Allow prop specs to be passed as hash tables as well as plists
+  ;; (mostly for the benefit of `el-get-validate-hash-table').
+  (when (hash-table-p required-props)
+    (setq required-props (el-get-hash-to-plist required-props)))
+  (when (hash-table-p optional-props)
+    (setq optional-props (el-get-hash-to-plist optional-props)))
+  (let ((errors nil))
+    (cl-loop for (prop pred) on required-props by #'cddr
+             for value = (funcall getter collection prop)
+             unless (funcall pred value)
+             do (push (format "Value of required property %s fails predicate %s"
+                              prop pred)
+                      errors))
+    (cl-loop for (prop pred) on optional-props by #'cddr
+             for value = (funcall getter collection prop)
+             unless (or (null value) (funcall pred value))
+             do (push (format "Value of optional property %s fails predicate %s"
+                              prop pred)
+                      errors))
+    (unless allow-extra
+      (let ((extra-props
+             (cl-set-difference
+              (funcall lister collection)
+              (nconc (el-get-plist-keys required-props)
+                     (el-get-plist-keys optional-props)))))
+        (when extra-props
+          (push "Extra properties provided but not allowed: %S" extra-props))))
+    ;; If no errors, this will be nil
+    (nreverse errors)))
+
+(defsubst el-get-validate-plist
   (plist required-props &optional optional-props allow-extra)
   "Validate the values of property list PLIST.
 
@@ -305,7 +361,7 @@ validation fails.
 
 REQUIRED-PROPS and OPTIONAL-PROPS are each property lists with
 values being predicates that the corresponding properties must
-satisfy. The propertiesof PLIST listed in REQUIRED-PROPS must
+satisfy. The properties of PLIST listed in REQUIRED-PROPS must
 satisfy their associated predicates, while the properties in
 OPTIONAL-PROPS must either satisfy their associated predicates or
 be nil (or absent). In addition, if any properties in PLIST are
@@ -317,34 +373,9 @@ can be provided with the same property, e.g. `(:prop
 #'pred1 :prop #'pred2)', in which case PLIST's value of `:prop'
 will have to satisfy both `pred1' and `pred2'."
   (declare (indent defun))
-  ;; Allow prop specs to be passed as hash tables as well as plists
-  ;; (mostly for the benefit of `el-get-validate-hash-table').
-  (when (hash-table-p required-props)
-    (setq required-props (el-get-hash-to-plist required-props)))
-  (when (hash-table-p optional-props)
-    (setq optional-props (el-get-hash-to-plist optional-props)))
-  (let ((errors nil))
-    (cl-loop for (prop pred) on required-props by #'cddr
-             for value = (plist-get plist prop)
-             unless (funcall pred value)
-             do (push (format "Value of required property %s fails predicate %s"
-                              prop pred)
-                      errors))
-    (cl-loop for (prop pred) on optional-props by #'cddr
-             for value = (plist-get plist prop)
-             unless (or (null value) (funcall pred value))
-             do (push (format "Value of optional property %s fails predicate %s"
-                               prop pred)
-                      errors))
-    (let ((extra-props
-           (cl-set-difference
-            (el-get-plist-keys plist)
-            (nconc (el-get-plist-keys required-props)
-                   (el-get-plist-keys optional-props)))))
-      (when extra-props
-        (push "Extra properties provided but not allowed: %S" extra-props)))
-    ;; If no errors, this will be nil
-    (nreverse errors)))
+  (el-get-validate-collection plist
+    #'el-get-plist-keys #'plist-get
+    required-props optional-props allow-extra))
 
 (defsubst el-get-validate-hash-table
   (table required-keys optional-keys &optional allow-extra)
@@ -352,8 +383,9 @@ will have to satisfy both `pred1' and `pred2'."
 
 REQUIRED-KEYS and OPTIONAL-KEYS may be passed as either hash
 tables or property lists."
-  (el-get-validate-plist (el-get-hash-to-plist table)
-                         required-keys optional-keys allow-extra))
+  (el-get-validate-collection table
+    #'el-get-hash-table-keys #'(lambda (t k) (gethash k t))
+    required-keys optional-keys allow-extra))
 
 (defun* el-get-make-lookup-table
     (objects &key key-func (value-func #'identity) init-hash allow-nil-key)

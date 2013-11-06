@@ -40,7 +40,7 @@ URL can be either a string or a url struct (see url-parse.el)."
   ;; A file recipe just has to have a `:url' property that looks like
   ;; a URL.
   (el-get-validate-recipe-properties recipe
-    (list :url #'el-get-file-valididate-url)))
+    '(:url #'el-get-file-valididate-url)))
 
 (defsubst el-get-file-make-local-name (recipe)
   "Try to choose an appropriate local file name based on RECIPE's `:url'.
