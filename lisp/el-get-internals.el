@@ -530,7 +530,7 @@ into this:
   (save-excursion
     (goto-char (nth 1 state))
     (list (1+ (- (point) (progn (move-beginning-of-line 1) (point)))))))
-(loop for prop in '(:name :type :status)
+(loop for prop in '(:name :type :status :url)
       do (put prop 'lisp-indent-function #'el-get-plist-indent-function))
 
 (provide 'el-get-internals)

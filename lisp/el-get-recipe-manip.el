@@ -34,7 +34,13 @@
 (defsubst el-get-recipe-autoget (recipe prop)
   "Get auto-generated value of PROP for RECIPE.
 
-TODO More info"
+Some recipe types provide auto-generated property values for some
+properties, which are used if a recipe does not explicitly
+specify those properties. For example, file-type recipes will
+auto-generate `:file-name' and `:website' properties.
+
+Note that the `:name' and `:type' properties can never have
+auto-generated values."
   ;; :name and :type may be auto-generated
   (unless (or (memq prop '(:name :type))
               (null (el-get-fetcher-op recipe :auto-property)))
@@ -63,17 +69,15 @@ This is equivalent to `plist-put', since recipes are implemented
 as property lists.")
 
 (defsubst el-get-recipe-name (recipe)
-  "TODO DOC"
+  "Return the `:name' property of RECIPE."
   (el-get-recipe-get recipe :name))
 
 (defsubst el-get-recipe-type (recipe)
-  "TODO DOC"
+  "Return the `:type' property of RECIPE."
   (el-get-recipe-get recipe :type))
 
 (defsubst el-get-recipe-auto-generated-p (recipe)
-  "Returns non-nil if RECIPE was auto-generated.
-
-TODO link to additional doc"
+  "Returns non-nil if RECIPE was auto-generated."
   (el-get-recipe-get recipe :auto-generated))
 
 (defun el-get-validate-recipe-properties
