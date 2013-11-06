@@ -388,6 +388,19 @@ nil."
        (> (length str) 0)
        str))
 
+(defsubst el-get-reverse-string (str)
+  "Return STR with characters reversed."
+  (concat (nreverse (string-to-list str))))
+
+(defsubst el-get-string-suffix-p (str1 str2 &optional ignore-case)
+  "Return non-nil if STR1 is a suffix of STR2.
+
+If IGNORE-CASE is non-nil, the comparison is done without paying attention
+to case differences."
+  (string-prefix-p (el-get-reverse-string str1)
+                   (el-get-reverse-string str2)
+                   ignore-case))
+
 (defun el-get-ensure-suffix (str suffix)
   "If STR does not end in SUFFIX, append it."
   (if (string-match-p
@@ -408,6 +421,17 @@ returned."
   (unless (file-directory-p path)
     (el-get-error "Could not create directory at path %S" path)))
 
+(defun el-get-directory-contents (directory &optional full match nosort)
+  "Like `directory-files', but excludes \".\" and \"..\".
+
+This means that this function only returns paths to files and
+directories contained inside DIRECTORY."
+  (cl-delete-if
+   (lambda (path) (member
+              (file-name-nondirectory path)
+              '("." "..")))
+   (directory-files directory full match nosort)))
+
 (defun el-get-delete-directory-contents (dir &optional force)
   "If DIR exists and is a directory, delete its contents.
 
@@ -422,12 +446,8 @@ operate on subdirectories of `el-get-install-dir'."
           (error "Directory %S is not a subdirectory of El-get install directory %S; Use the FORCE argument if necessary"
                  dir el-get-install-dir))
       (loop
-       for f in (directory-files dir t nil t)
+       for f in (el-get-directory-contents dir t nil t)
        do (cond
-           ;; Don't delete the dir itself or its parent
-           ((member (file-name-nondirectory f) '("." ".."))
-            ;; Do nothing
-            nil)
            ;; Check symlink before dir
            ((file-symlink-p f)
             (delete-file f))
