@@ -25,7 +25,7 @@ Throws an error for all other inputs."
    (t
     (el-get-error "Not a URL: %S" url))))
 
-(defun el-get-file-validate-url (url)
+(defun el-get-file-url-valid-p (url)
   "Returns non-nil if URL looks like a valid URL that el-get can handle.
 
 See `el-get-file-valid-url-protocols' for a list of URL types
@@ -36,11 +36,16 @@ URL can be either a string or a url struct (see url-parse.el)."
   (car (member (url-type (el-get-as-url-struct url))
                el-get-file-valid-url-protocols)))
 
+(defun el-get-elisp-filename-p (fname)
+  "Return non-nil if FNAME could be the name of an elisp file."
+  (el-get-string-suffix-p ".el" fname))
+
 (defun el-get-file-validate-recipe (recipe)
   ;; A file recipe just has to have a `:url' property that looks like
   ;; a URL.
   (el-get-validate-recipe-properties recipe
-    '(:url #'el-get-file-valididate-url)))
+    '(:url #'el-get-file-url-valid-p
+      :file-name #'el-get-elisp-filename-p)))
 
 (defsubst el-get-file-make-local-name (recipe)
   "Try to choose an appropriate local file name based on RECIPE's `:url'.
