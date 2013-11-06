@@ -42,13 +42,17 @@ Any additional arguments are passed as keyword arguments to
 `el-get-async'.
 
 Note: For convenience, if any element of FILES is nil, it will be
-skipped."
+skipped. However, any non-nil non-string value will result in an
+error."
   (loop for f in files
-        if f
+        if (null f)
+        do (ignore)
+        else if (stringp f)
         do (el-get-sandbox-eval
             `(progn (require 'bytecomp)
                     (byte-recompile-file ,f 'force 0 'load))
-            )))
+            )
+        else (el-get-error "Not a string: %S" f)))
 
 (defun el-get-find-all-elisp-files (path)
   "Find all Emacs Lisp files in PATH.
