@@ -42,19 +42,28 @@ set to `(cons PACKAGE STATUS-PLIST)', where PACKAGE is the name
 of the package and STATUS-PLIST is the contents of the status
 file for that package.")
 
-(defun el-get-package-directory (package)
-  "Return the package directory for PACKAGE.
+(defun el-get-package-base-directory (package)
+  "Return the base directory for PACKAGE.
 
 Note that this just returns the path to the directory that will
 be used for PACKAGE. It does not check whether that directory
-exists."
+exists.
+
+See also `el-get-package-install-directory'."
   (let ((package (el-get-as-string package)))
     (unless (el-get-file-basename-p package)
       (el-get-error "Package name %S contains a directory separator" package))
     (expand-file-name package el-get-install-dir)))
 
+(defsubst el-get-package-install-directory (package)
+  "Return the path where PACKAGE's files will be installed.
+
+This is always the \"pkg\" subdirectory of PACKAGE's base
+directory."
+  (expand-file-name "pkg" (el-get-package-base-directory package)))
+
 (defsubst el-get-holding-package-lock (package)
-  (el-get-holding-file-lock (el-get-package-directory package)))
+  (el-get-holding-file-lock (el-get-package-base-directory package)))
 
 (defmacro el-get-with-package-lock (package &rest body)
   "Execute BODY while holding the lock on PACKAGE.
@@ -69,23 +78,22 @@ Note that while this is a macro, PACKAGE is evaluated normally."
         ;; We already have the lock, just execute BODY
         `(progn ,@body)
       ;; We need to acquire the lock, and release it when done
-      `(let ((package-dir ,(el-get-package-directory package)))
+      `(let ((package-dir ,(el-get-package-base-directory package)))
          ;; Make sure the parent directory exists so we can create the
          ;; lock
          (el-get-ensure-directory (file-name-directory package-dir))
          (el-get-with-file-lock package-dir
            (unwind-protect (progn ,@body)
-             ;; Clear the status cache before releasing the package
-             ;; lock.
+             ;; Clear the status cache before releasing the lock.
              (setq el-get-package-status-cache nil)))))))
 
 (defsubst el-get-status-file (package)
   "Return the path to the status file for PACKAGE.
 
 This file is not guaranteed to exist."
-  (expand-file-name ".status" (el-get-package-directory package)))
+  (expand-file-name ".status" (el-get-package-base-directory package)))
 
-(defsubst el-get-status-plist-valid (package plist)
+(defsubst el-get-status-plist-valid-p (package plist)
   "Return non-nil if PLIST is a valid status plist for PACKAGE."
   (declare (indent 1))
   (case (plist-get plist :status)
@@ -96,6 +104,7 @@ This file is not guaranteed to exist."
     ((fetched installed)
      (and (el-get-recipe-valid-p (plist-get plist :recipe))
           (el-get-fetcher-real-p (plist-get plist :recipe))))
+    (otherwise nil)))
 
 (defun el-get-status-plist (package)
   "Read and return the list from status file for PACKAGE.
@@ -114,7 +123,7 @@ recipe."
              (let ((sfile (el-get-status-file package)))
                (when (file-exists-p sfile)
                  (let ((plist (ignore-errors (el-get-read-from-file sfile))))
-                   (when (el-get-status-plist-valid plist package)
+                   (when (el-get-status-plist-valid-p plist package)
                      plist)))))))
       ;; Set the cache if we are holding the package lock
       (when (el-get-holding-package-lock package)
@@ -127,7 +136,7 @@ recipe."
 
 PLIST is validated before attempting to write it."
   (declare (indent 1))
-  (unless (el-get-status-plist-valid plist package)
+  (unless (el-get-status-plist-valid-p plist package)
     (el-get-error
      "Not a valid status plist for package %s:\n%S"
      package plist))
@@ -178,16 +187,34 @@ will be used to get name of the package to be removed."
     ;; deletion is interrupted it can be resumed later.
     (el-get-write-status-plist package
       '(:status removed))))
-    (delete-directory (el-get-package-directory package))))
+    (delete-directory (el-get-package-base-directory package))))
 
 (defun el-get-fetch-package (recipe)
   "Fetch package described by RECIPE.
 
 Upon success, this sets the package status to \"fetched\".
 
-If package status is already \"fetched\" or \"installed\", this
-throws an error."
+If successful, this function returns a symbol describing what it
+did. Possible values are `fetched' or `skipped'."
   (el-get-warn-unless-in-subprocess 'el-get-fetch-package)
+  (let ((package (el-get-recipe-name recipe)))
+    (el-get-with-package-lock package
+      (case (el-get-package-status package)
+        (removed
+         (el-get-do-fetch recipe)
+         'fetched)
+        ((fetched installed)
+         (el-get-message "Package %s is already %s. Skipping fetch."
+                         package (el-get-package-status package))
+         'skipped)
+        (t (el-get-error "Invalid status: %s"
+                         (el-get-package-status package)))))))
+
+(defun el-get-do-fetch (recipe)
+  "Fetch package described by RECIPE unconditionally.
+
+If the package directory already exists, its contents are deleted
+and replaced with the fetched contents."
   (let ((package (el-get-recipe-name recipe))
         ;; We need to devirtualize the recipe now and store the
         ;; devirtualized version, so that if its devirtualized
@@ -195,30 +222,22 @@ throws an error."
         ;; continues using the old representation that was used to
         ;; install it.
         (recipe (el-get-devirtualize-recipe-def recipe)))
-    (el-get-with-package-lock package
-      (el-get-ensure-directory (el-get-package-directory package))
-      (case (el-get-package-status package)
-        (removed
-         ;; Ensure the directory is empty
-         (el-get-debug-message
-          "Ensuring empty starting directory for package %s before fetching."
-          package)
-         (el-get-delete-directory-contents
-          (el-get-package-directory package))
-         ;; Fetch the package
-         ;; TODO: Fetch in temp dir?
-         (funcall (el-get-fetcher-op recipe :fetch)
-                  recipe (el-get-package-directory package))
-         ;; Set status to fetched, and record the recipe
-         (el-get-write-status-plist package
-           `(:status fetched
-             :recipe ,recipe)))
-        ((fetched installed)
-         ;; Already fetched; do nothing
-         (el-get-message "Package %s is already %s. Skipping fetch."
-                         package (el-get-package-status package)))
-        (t (el-get-error "Invalid status: %s"
-                         (el-get-package-status package)))))))
+    ;; Ensure the directory is empty
+    (el-get-debug-message
+     "Ensuring empty starting directory for package %s before fetching."
+     package)
+    (el-get-delete-directory-contents
+     (el-get-package-base-directory package))
+    (el-get-ensure-directory
+     (el-get-package-install-directory package))
+    ;; Fetch the package
+    ;; TODO: Fetch in temp dir?
+    (funcall (el-get-fetcher-op recipe :fetch)
+             recipe (el-get-package-install-directory package))
+    ;; Set status to fetched, and record the recipe
+    (el-get-write-status-plist package
+                               `(:status fetched
+                                         :recipe ,recipe))))
 
 (provide 'el-get-package-manip)
 ;;; el-get-package-manip.el ends here
