@@ -110,6 +110,7 @@
 (require-verbose 'el-get-recipe-manip)
 (require-verbose 'el-get-recipe-io)
 (require-verbose 'el-get-lock)
+(require-verbose 'el-get-bytecomp)
 
 (message "Finished loading El-get!")
 

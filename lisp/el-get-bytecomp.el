@@ -50,9 +50,8 @@ error."
         else if (stringp f)
         do (el-get-sandbox-eval
             `(progn (require 'bytecomp)
-                    (byte-recompile-file ,f 'force 0 'load))
-            )
-        else (el-get-error "Not a string: %S" f)))
+                    (byte-recompile-file ,f 'force 0 'load)))
+        else do (el-get-error "Not a string: %S" f)))
 
 (defun el-get-find-all-elisp-files (path)
   "Find all Emacs Lisp files in PATH.
