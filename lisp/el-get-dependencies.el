@@ -67,7 +67,14 @@ not-yet-installed pacakges, you could use
             :value-func #'el-get-package-dependencies))
          (remaining-deps
           (mapcan #'el-get-package-dependencies recipes)))
+    (el-get-debug-message "Overrides: %S"
+                          (el-get-hash-to-plist overrides))
+    (el-get-debug-message "Resolved recipes: %S" recipes)
+    (el-get-debug-message "Dep hash init: %S"
+                          (el-get-hash-to-plist dephash))
     (loop while remaining-deps
+          do (el-get-debug-message "Remaining dependencies: %S"
+                                remaining-deps)
           for next-pkg = (pop remaining-deps)
           if (not (or (gethash next-pkg dephash)
                       (funcall skip-p next-pkg)))
@@ -121,9 +128,14 @@ optional arg COPY, the graph is instead copied and the original
 is left intact."
   (when copy
     (setq graph (copy-hash-table graph)))
+  (el-get-debug-message "Linearizing graph: %S"
+                        (el-get-hash-to-plist graph))
   (loop with deplist = nil
         while (> (hash-table-count graph) 0)
         for start = (el-get-random-hash-key graph)
+        do (el-get-debug-message "Current deplist: %S" deplist)
+        do (el-get-debug-message "Current depgraph: %S"
+                                 (el-get-hash-to-plist graph))
         if start
         nconc (el-get-extract-dependency-list start graph)
         into deplist
