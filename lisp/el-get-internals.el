@@ -87,25 +87,70 @@ the original object."
 
 (defun* el-get-print-to-string-with-verification
     (object &optional pretty (test #'equal))
-  "Return string representation after verifying.
+  "Return string representation after verifying printability.
 
-To verify, the result string is read in using `read' and tested
-for equivalence to OBJECT using TEST. The default TEST is
-`equal'."
-  (condition-case nil
-      (let* ((result-string (el-get-print-to-string object pretty))
-             (read-result (read result-string)))
-        (assert (funcall test object read-result))
-        result-string)
-    (error (error "Object failed to serialize to string: %S" object))))
+This is identical to `el-get-print-to-string' except that if
+OBJECT does not have an exact printed representation, an error is
+raised instead.
+
+To verify that the object can be properly printed to string, the
+result string is read in using `read' and tested for equivalence
+to OBJECT using TEST. The default TEST is `equal'."
+  (let* ((result-string (el-get-print-to-string object pretty))
+         (read-result (read result-string)))
+    (unless (funcall test object read-result)
+      (el-get-error "Object failed to serialize to string: %S" object))
+    result-string))
 
 (defsubst el-get-display-warning (message &optional level buffer-name)
   "Same as `display-warning' with TYPE set to `el-get'."
   (display-warning 'el-get message level buffer-name))
 
+(defun el-get-backtrace-from (fun)
+  "Return all backtrace frames, starting with the one for FUN.
+
+FUN may be a list of functions, in which case the first one found
+on the stack will be used."
+  (let ((stack
+         (loop for i upfrom 0
+               for frame = (backtrace-frame i)
+               while frame
+               collect frame))
+        (funcs (if (functionp fun)
+                   (list fun)
+                 fun)))
+    (while (and stack
+                (not (memq (cadar stack) funcs)))
+      (setq stack (cdr stack)))
+    stack))
+
+(defun el-get-call-stack (&optional start)
+  "Return a list of stack frames for calls to el-get functions."
+  (loop for stackframe in
+        (cdr (el-get-backtrace-from (or start 'el-get-call-stack)))
+        if (ignore-errors
+             (string-prefix-p "el-get"
+                              (symbol-name (cadr stackframe))))
+        collect stackframe))
+
+(defun el-get-caller-frame (&optional start)
+  "Return stack frame for the most recent call to an el-get function."
+  (loop for stackframe in
+        (cdr (el-get-backtrace-from (or start 'el-get-caller-frame)))
+        if (ignore-errors
+             (string-prefix-p "el-get"
+                              (symbol-name (cadr stackframe))))
+        return stackframe))
+
 (defun el-get-debug-message (format-string &rest args)
   "Record a debug message related to el-get."
-  (el-get-display-warning (apply #'format format-string args) :debug))
+  (let ((format-string
+         (concat "In el-get frame %S:\n" format-string))
+        (args (cons (el-get-caller-frame 'el-get-debug-message)
+                    args)))
+    (el-get-display-warning
+     (apply #'format format-string args)
+     :debug)))
 
 (defun el-get-message (format-string &rest args)
   "Display a message related to el-get.
@@ -128,9 +173,14 @@ automatically prefixed by \"el-get error: \".
 
 Also, the raised error has an additional condition
 `el-get-error'."
-  ;; Definition copied from `error'.
-  (while t
-    (signal 'el-get-error (list (apply 'format string args)))))
+  (let ((string
+         (concat string
+                 "\nError occurred in El-get call: %S"))
+        (args (nconc args (list (el-get-caller-frame 'el-get-error)))))
+    ;; This wil loop copied from `error'. Not sure what the purpose
+    ;; is.
+    (while t
+      (signal 'el-get-error (list (apply 'format string args))))))
 
 ;;
 ;; "Fuzzy" data structure handling
