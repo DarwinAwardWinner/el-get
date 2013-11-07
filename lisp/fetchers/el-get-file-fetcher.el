@@ -110,10 +110,11 @@ If no file name can be determined from the URL, an error is signaled."
   :validate #'el-get-file-validate-recipe
   ;; :compute-checksum #'el-get-file-compute-checksum
   :auto-property
-  #'(lambda (recipe prop)
-      (case prop
-        (:file-name (el-get-file-make-local-name recipe)))
-        (:website (el-get-recipe-get recipe :url))))
+  (lambda (recipe prop)
+    (case prop
+      (:file-name (el-get-file-make-local-name recipe))
+      (:website (el-get-recipe-get recipe :url))
+      (:load-path "."))))
 
 (provide 'el-get-file-fetcher)
 ;;; el-get-file-fetcher.el ends here
