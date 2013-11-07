@@ -533,5 +533,18 @@ into this:
 (loop for prop in '(:name :type :status :url)
       do (put prop 'lisp-indent-function #'el-get-plist-indent-function))
 
+(defmacro el-get-with-cd-to-dir (dir &rest body)
+  "`cd' to DIR, eval BODY, and `cd' back to previous directory.
+
+Even if BODY encounters an error, this will still `cd' back to
+the previous directory."
+  (declare (indent 1))
+  `(let ((prev-def-dir default-directory))
+    (unwind-protect
+        (progn
+          (cd ,(eval dir))
+          ,@body)
+      (cd prev-def-dir))))
+
 (provide 'el-get-internals)
 ;;; el-get-internals.el ends here

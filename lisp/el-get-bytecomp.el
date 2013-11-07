@@ -129,6 +129,7 @@ PACKAGE's load-path will be compiled.
     (mapcan #'el-get-find-all-elisp-files
             (remove-if-not #'stringp compile-prop))))
 
+;; TODO: Add package and dependencies' load paths to load-path before compiling
 (defsubst el-get-byte-compile-package (package)
   "Do byte-compilation for PACKAGE."
   (el-get-byte-compile-files

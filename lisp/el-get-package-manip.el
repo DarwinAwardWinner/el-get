@@ -24,9 +24,11 @@
 
 ;;; Code:
 
+(require 'el-get-internals)
 (require 'el-get-variables)
 (require 'el-get-recipe-manip)
 (require 'el-get-fetcher-registry)
+(require 'el-get-bytecomp)
 
 (put ':status 'lisp-indent-function)
 
@@ -222,22 +224,160 @@ and replaced with the fetched contents."
         ;; continues using the old representation that was used to
         ;; install it.
         (recipe (el-get-devirtualize-recipe-def recipe)))
-    ;; Ensure the directory is empty
-    (el-get-debug-message
-     "Ensuring empty starting directory for package %s before fetching."
-     package)
-    (el-get-delete-directory-contents
-     (el-get-package-base-directory package))
-    (el-get-ensure-directory
-     (el-get-package-install-directory package))
-    ;; Fetch the package
-    ;; TODO: Fetch in temp dir?
-    (funcall (el-get-fetcher-op recipe :fetch)
-             recipe (el-get-package-install-directory package))
-    ;; Set status to fetched, and record the recipe
-    (el-get-write-status-plist package
-                               `(:status fetched
-                                         :recipe ,recipe))))
+    (el-get-with-package-lock package
+      ;; Ensure the directory is empty
+      (el-get-debug-message
+       "Ensuring empty starting directory for package %s before fetching."
+       package)
+      (el-get-delete-directory-contents
+       (el-get-package-base-directory package))
+      (el-get-ensure-directory
+       (el-get-package-install-directory package))
+      ;; Fetch the package
+      ;; TODO: Fetch in temp dir?
+      (funcall (el-get-fetcher-op recipe :fetch)
+               recipe (el-get-package-install-directory package))
+      ;; Set status to fetched, and record the recipe
+      (el-get-write-status-plist package
+                                 `(:status fetched
+                                   :recipe ,recipe)))))
+
+(defun el-get-normalize-build-command (cmd &optional package)
+  "Normalize a build command CMD.
+
+If CMD is a list of strings, return it. If it is a string, return
+a list of strings representing the same command. For any other
+value, an error is returned.
+
+For a CMD that is a string, a warning is issued if it contains
+any characters with special meaning to the shell (including
+spaces). Such commands should be converted to the list-of-strings
+form.
+
+With optional argument PACKAGE, it will be included in any error or warning messages
+messages."
+  (cond
+   ((stringp cmd)
+    ;; Convert to `("sh" "-c" ,cmd) or equivalent
+    (prog1 (list shell-file-name
+                 shell-command-switch
+                 cmd)
+      (when (not (string= cmd (shell-quote-argument cmd)))
+        (el-get-display-warning "Build command %S%s will be shell-interpolated. To bypass shell interpolation, the command should be written as a list of strings instead."
+                                cmd (if package
+                                        (concat " in package " package)
+                                      "")))))
+   ((listp cmd)
+    (prog1 cmd
+      (loop for s in cmd
+            unless (stringp s)
+            do (el-get-error "Build command%s contains non-string arguments: %S"
+                             (if package
+                                 (concat " for package " package)
+                               "")
+                             cmd))))
+   (t (el-get-error "Invalid build command%s: %S"
+                    (if package
+                        (concat " for package " package)
+                      "")
+                    cmd))))
+
+(defun el-get-normalize-build-property (buildprop &optional package)
+  "Properly normalize a `:build' property of a recipe.
+
+A recipe's `:build' property can be any one of the following:
+
+* A zero-argument function, which will be called with
+  `default-directory' set to the directory in which the package
+  was fetched. This function should perform the build.
+
+* A list of build commands, where each build command is a list of
+  strings or a single string. The list-of-strings form is
+  preferred because it will avoid shell interpolation.
+
+In either case, BUILDPROP will be comma-interpolated as if it
+were backquoted, unless it is prefixed with a normal quote.
+
+Any other form will result in an error.
+
+This function exists mainly for error-checking and converting
+single-string build commands into list-of-string build commands.
+
+With optional argument PACKAGE, it will be included in any error
+messages."
+  ;; Unquote or eval as needed
+  (when (listp buildprop)
+    (setq buildprop
+          (case (car buildprop)
+            (quote (cdr buildprop))
+            (\` (eval buildprop))
+            ;; No quote, so use backquote implicitly.
+            (otherwise
+             (eval (list '\` buildprop))))))
+  (cond
+   ;; Nil: return it
+   ((null buildprop) nil)
+   ;; Function: just return it
+   ((functionp buildprop)
+    buildprop)
+   ;; List of commands: normalize them
+   ((listp buildprop)
+    (mapcar (lambda (bc) (el-get-normalize-build-command buildprop package))
+            buildprop))
+   ;; Anything else: invalid
+   (t (el-get-error "Invalid `:build' property%s: %S"
+                    (if package (concat " for package " package) "")
+                    buildprop))))
+
+(defun el-get-build-package (package)
+  "Build PACKAGE."
+  (el-get-warn-unless-in-subprocess 'el-get-build-package)
+  (el-get-with-package-lock package
+    (let* ((status (el-get-package-status package))
+           (recipe (el-get-package-recipe package))
+           (buildprop (el-get-normalize-build-property
+                       (el-get-recipe-get recipe :build)))
+           (install-dir (el-get-package-install-directory package)))
+      ;; Check fetched status
+      (case status
+        (removed (el-get-error "Package %s must be fetched before building"
+                               package))
+        (installed (el-get-error "Package %s is already built"
+                                 package))
+        (fetched (ignore))
+        (otherwise (el-ger-error "Invalid status: %S" status)))
+      ;; Carry out the build commands
+      (el-get-do-build buildprop package)
+      ;; Do byte-compilation
+      (el-get-byte-compile-package package)
+      ;; Build autoloads
+      ;; TODO!
+      ;; Build info
+      ;; TODO!
+      )))
+
+(defun el-get-do-build (buildprop package)
+  "Perform build instrutions BUILDPROP in install dir of PACKAGE.
+
+BUILDPROP should already be normalized."
+  (el-get-with-cd-to-dir (el-get-package-install-directory package)
+    (if (functionp buildprop)
+        (funcall buildprop)
+      (loop
+       for cmd in buildprop
+       do (el-get-message "Running build command for package %s: %S"
+                          package cmd)
+       do (let ((exitcode
+                 (apply #'call-process
+                        (car cmd) nil nil nil
+                        (cdr cmd))))
+            (if (ignore-errors (= exitcode 0))
+                (el-get-debug-message
+                 "Build command succeeded for package %s: %S"
+                 package cmd)
+              (el-get-error
+               "Build command for package %s failed with exit code %s: %S"
+               package exitcode cmd)))))))
 
 (provide 'el-get-package-manip)
 ;;; el-get-package-manip.el ends here
