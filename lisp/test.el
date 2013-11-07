@@ -84,6 +84,13 @@
                                          '(:name b :type noop)))
              'b))
 
+(show-value
+(el-get-validate-recipe
+ '(:name ack
+   :type file
+   :url "http://repo.or.cz/w/ShellArchive.git/blob_plain/HEAD:/ack.el")
+ nil "ack"))
+
 (el-get-delete-directory-contents el-get-install-dir 'force)
 (el-get-fetch-package '(:name b :type noop))
 (el-get-build-package 'b)
@@ -91,5 +98,13 @@
 (el-get-fetch-package '(:name c :type null))
 (el-get-build-package 'c)
 (el-get-remove-package 'c)
+
+(el-get-fetch-package (el-get-read-recipe 'ack))
+(el-get-build-package 'ack)
+(el-get-remove-package 'ack)
+
+(condition-case err
+    (el-get-fetch-package (el-get-read-recipe 'this-is-not-a-package))
+  (el-get-error (message "Got expected error: %S" err)))
 
 (message "All tests finished successfully! :)")
