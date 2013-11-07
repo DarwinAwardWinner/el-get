@@ -30,8 +30,6 @@
 (require 'el-get-fetcher-registry)
 (require 'el-get-bytecomp)
 
-(put ':status 'lisp-indent-function)
-
 (defconst el-get-package-statuses
   '(removed installed fetched)
   "List of possible statuses a package can have.")
@@ -95,18 +93,24 @@ Note that while this is a macro, PACKAGE is evaluated normally."
 This file is not guaranteed to exist."
   (expand-file-name ".status" (el-get-package-base-directory package)))
 
-(defsubst el-get-status-plist-valid-p (package plist)
+(defsubst el-get-status-plist-valid (plist package)
   "Return non-nil if PLIST is a valid status plist for PACKAGE."
   (declare (indent 1))
   (case (plist-get plist :status)
     ;; If status is removed (or nil), we don't need a recipe
-    (removed t)
+    (removed
+     (el-get-debug-message "Package is removed")
+     t)
     ;; If status is fetched or installed, the `:recipe' property must
     ;; be a valid recipe, and it must not be a virtual recipe.
     ((fetched installed)
-     (and (el-get-recipe-valid-p (plist-get plist :recipe))
+     (el-get-debug-message "Package is fetched or installed")
+     (and (el-get-recipe-valid-p (plist-get plist :recipe) package)
           (el-get-fetcher-real-p (plist-get plist :recipe))))
-    (otherwise nil)))
+    (otherwise
+     (el-get-debug-message "Invalid status %s: %S"
+                           (plist-get plist :status) plist)
+     nil)))
 
 (defun el-get-status-plist (package)
   "Read and return the list from status file for PACKAGE.
@@ -125,7 +129,7 @@ recipe."
              (let ((sfile (el-get-status-file package)))
                (when (file-exists-p sfile)
                  (let ((plist (ignore-errors (el-get-read-from-file sfile))))
-                   (when (el-get-status-plist-valid-p plist package)
+                   (when (el-get-status-plist-valid plist package)
                      plist)))))))
       ;; Set the cache if we are holding the package lock
       (when (el-get-holding-package-lock package)
@@ -138,7 +142,7 @@ recipe."
 
 PLIST is validated before attempting to write it."
   (declare (indent 1))
-  (unless (el-get-status-plist-valid-p plist package)
+  (unless (el-get-status-plist-valid plist package)
     (el-get-error
      "Not a valid status plist for package %s:\n%S"
      package plist))
@@ -183,13 +187,17 @@ This just removes PACKAGE's directory and all its contents.
 PACKAGE may also be a recipe, in which case `el-get-recipe-name'
 will be used to get name of the package to be removed."
   (when (listp package)
+    (el-get-display-warning
+     "Recipe passed to `el-get-remove' instead of package name: %S"
+     package)
     (setq package (el-get-recipe-name package)))
+  (el-get-debug-message "Removing package %s" package)
   (el-get-with-package-lock package
     ;; First write a removed status to the status file, so that if the
     ;; deletion is interrupted it can be resumed later.
     (el-get-write-status-plist package
-      '(:status removed))))
-    (delete-directory (el-get-package-base-directory package))))
+      '(:status removed))
+    (delete-directory (el-get-package-base-directory package) 'recursive)))
 
 (defun el-get-fetch-package (recipe)
   "Fetch package described by RECIPE.
@@ -200,6 +208,7 @@ If successful, this function returns a symbol describing what it
 did. Possible values are `fetched' or `skipped'."
   (el-get-warn-unless-in-subprocess 'el-get-fetch-package)
   (let ((package (el-get-recipe-name recipe)))
+    (el-get-debug-message "Fetching package %s" package)
     (el-get-with-package-lock package
       (case (el-get-package-status package)
         (removed
@@ -235,7 +244,7 @@ and replaced with the fetched contents."
        (el-get-package-install-directory package))
       ;; Fetch the package
       ;; TODO: Fetch in temp dir?
-      (funcall (el-get-fetcher-op recipe :fetch)
+      (funcall (el-get-fetcher-prop recipe :fetch)
                recipe (el-get-package-install-directory package))
       ;; Set status to fetched, and record the recipe
       (el-get-write-status-plist package
@@ -332,6 +341,7 @@ messages."
 (defun el-get-build-package (package)
   "Build PACKAGE."
   (el-get-warn-unless-in-subprocess 'el-get-build-package)
+  (el-get-debug-message "Building package %s" package)
   (el-get-with-package-lock package
     (let* ((status (el-get-package-status package))
            (recipe (el-get-package-recipe package))

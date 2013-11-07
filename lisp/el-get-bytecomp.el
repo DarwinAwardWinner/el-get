@@ -110,7 +110,7 @@ PACKAGE's load-path will be compiled.
     ;; Expand symbol into approprate list
     (when (symbolp compile-prop)
       ;; Handle auto by choosing all or none
-      (when (memq (compile-prop '(auto nil)))
+      (when (memq compile-prop '(auto nil))
         (setq compile-prop
               (if build-prop 'none 'all)))
       (setq compile-prop

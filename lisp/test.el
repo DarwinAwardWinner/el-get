@@ -1,8 +1,8 @@
 (require 'el-get)
 
 (setq
- ;; warning-minimum-level :debug
- ;; warning-minimum-log-level :debug
+ warning-minimum-level :debug
+ warning-minimum-log-level :debug
  print-level nil
  print-length nil
  debugger-batch-max-lines (+ 50 max-lisp-eval-depth)
@@ -23,14 +23,14 @@
             ',object
             ',(el-get-print-to-string (eval object) 'pretty)))
 
-(show-value (el-get-fetcher-op 'noop :fetch))
+(show-value (el-get-fetcher-prop 'noop :fetch))
 (show-value (el-get-resolve-recipe 'recipe1))
 (show-value (el-get-resolve-recipe 'recipe2))
 (show-value (el-get-resolve-recipe 'recipe2 :devirtualize t))
 (show-value (el-get-resolve-recipe "recipe2" :devirtualize t))
 (show-value (el-get-resolve-recipe '(:name recipe4 :type no-op)
               :devirtualize t))
-(show-value (el-get-fetcher-op
+(show-value (el-get-fetcher-prop
              (el-get-devirtualize-recipe-def '(:name recipe3 :type null))
              :fetch))
 
@@ -75,5 +75,21 @@
        (:name b :type noop)
        (:name c :type noop)
        (:name d :type noop)))))
+
+(show-value (el-get-status-plist-valid
+             '(:status removed)
+             'b))
+(show-value (el-get-status-plist-valid
+             `(:status fetched :recipe ,(el-get-devirtualize-recipe-def
+                                         '(:name b :type noop)))
+             'b))
+
+(el-get-delete-directory-contents el-get-install-dir 'force)
+(el-get-fetch-package '(:name b :type noop))
+(el-get-build-package 'b)
+(el-get-remove-package 'b)
+(el-get-fetch-package '(:name c :type null))
+(el-get-build-package 'c)
+(el-get-remove-package 'c)
 
 (message "All tests finished successfully! :)")

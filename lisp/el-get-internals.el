@@ -208,13 +208,13 @@ this function."
       (error "Property list does not contain property %s" prop)))
 
 (defun el-get-substitute-keywords (plist expr)
-  "Replace all keywords in EXPR with their values from PLIST.
+  "Replace all keywords in EXPR with their quoted values from PLIST.
 
 If a keyword in EXPR is missing from PLIST, it will be replaced
 with nil. Quoted forms are not modified."
   (cond
    ((keywordp expr)
-    (plist-get plist expr))
+    `(quote ,(plist-get plist expr)))
    ((and (consp expr)
          ;; Don't recurse into quoted forms
          (not (eq (car expr) 'quote)))

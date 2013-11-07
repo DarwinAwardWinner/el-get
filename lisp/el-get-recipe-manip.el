@@ -43,8 +43,8 @@ Note that the `:name' and `:type' properties can never have
 auto-generated values."
   ;; :name and :type may be auto-generated
   (unless (or (memq prop '(:name :type))
-              (null (el-get-fetcher-op recipe :auto-property)))
-    (funcall (el-get-fetcher-op recipe :auto-property) recipe prop)))
+              (null (el-get-fetcher-prop recipe :auto-property)))
+    (funcall (el-get-fetcher-prop recipe :auto-property) recipe prop)))
 ;; Optimize to nil for explicit-only properties
 (cl-define-compiler-macro el-get-recipe-autoget (&whole form recipe prop)
   (if (memq prop '(:name :type))
@@ -124,7 +124,7 @@ have that name in order to validate."
           (unless errors
             (setq errors
                   (el-get-as-list
-                   (funcall (or (el-get-fetcher-op recipe :validate)
+                   (funcall (or (el-get-fetcher-prop recipe :validate)
                                 #'ignore)
                             recipe)))))
       ;; If the above code actually throws an error, record that in
@@ -218,7 +218,7 @@ If RECIPE is already of a real type, is is returned unchanged."
         do (setq recipe
                  (el-get-apply-recipe-filter
                   recipe
-                  (el-get-fetcher-op recipe :filter)))
+                  (el-get-fetcher-prop recipe :filter)))
         if validate
         do (el-get-validate-recipe recipe)
         if (not recursive) return recipe

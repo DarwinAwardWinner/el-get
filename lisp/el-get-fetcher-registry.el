@@ -131,7 +131,7 @@ validate."
     (setq def (el-get-plist-to-hash def)))
   (puthash type def el-get-fetchers))
 
-(defun el-get-fetcher-op (type operation)
+(defun el-get-fetcher-prop (type operation)
   "Return the OPERATION function for fetcher type TYPE.
 
 TYPE may either be the name of a fetcher type, the definition of
@@ -144,20 +144,20 @@ error. TODO"
    ;; String naming an operation
    ((stringp operation)
     (el-get-display-warning "String used instead of symbol to name an operation")
-    (el-get-fetcher-op type (intern operation)))
+    (el-get-fetcher-prop type (intern operation)))
    ;; Hash table = Fetcher definition
    ((hash-table-p type)
     (gethash operation type))
    ;; Symbol naming a fetcher
    ((symbolp type)
-    (el-get-fetcher-op (el-get-get-fetcher type) operation))
+    (el-get-fetcher-prop (el-get-get-fetcher type) operation))
    ;; String naming a fetcher
    ((stringp type)
     (el-get-display-warning "String used instead of symbol to name a type")
-    (el-get-fetcher-op (intern type) operation))
+    (el-get-fetcher-prop (intern type) operation))
    ;; List = Recipe definition
    ((listp type)
-    (el-get-fetcher-op (el-get-recipe-type type) operation))
+    (el-get-fetcher-prop (el-get-recipe-type type) operation))
    ;; Unrecognized fetcher type
    ((null type)
     (el-get-error "Unrecognized fetcher type"))))
@@ -167,14 +167,14 @@ error. TODO"
 
 TYPE may either be a symbol naming a fetcher type or a hash table
 that defines a fetcher type."
-  (el-get-fetcher-op type :fetch))
+  (el-get-fetcher-prop type :fetch))
 
 (defsubst el-get-fetcher-virtual-p (type)
   "Returns t if TYPE is a virtual fetcher type.
 
 TYPE may either be a symbol naming a fetcher type or a hash table
 that defines a fetcher type."
-  (el-get-fetcher-op type :filter))
+  (el-get-fetcher-prop type :filter))
 
 (defsubst el-get-fetcher-registered-p (type)
   "Returns t if TYPE is a registered fetcher type."
