@@ -115,6 +115,7 @@
 (require-verbose 'el-get-testvirt-fetcher)
 (require-verbose 'el-get-file-fetcher)
 (require-verbose 'el-get-dependencies)
+(require-verbose 'el-get-package-internals)
 (require-verbose 'el-get-package-manip)
 
 (message "Finished loading El-get!")

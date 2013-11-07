@@ -26,6 +26,7 @@
 
 (require 'cl)
 (require 'el-get-async)
+(require 'el-get-package-internals)
 
 (defun el-get-byte-compile-files (files &rest async-props)
   "Byte-compile each of FILES in separate clean Emacs subprocesses.
@@ -103,7 +104,8 @@ PACKAGE's load-path will be compiled.
               (error "Could not get recipe for package: %s" package)))
          (compile-prop (el-get-recipe-get recipe :compile))
          (build-prop (el-get-recipe-get recipe :build))
-         (lpath-prop (el-get-recipe-get recipe :load-path)))
+         (lpath-prop (el-get-recipe-get recipe :load-path))
+         (install-dir (el-get-package-install-directory package)))
     ;; Convert bare string to list of one string
     (when (stringp compile-prop)
       (setq compile-prop (list compile-prop)))
@@ -111,11 +113,12 @@ PACKAGE's load-path will be compiled.
     (when (symbolp compile-prop)
       ;; Handle auto by choosing all or none
       (when (memq compile-prop '(auto nil))
+        (el-get-debug-message "Auto compile-prop for package %s." package)
         (setq compile-prop
               (if build-prop 'none 'all)))
       (setq compile-prop
             (case compile-prop
-              (all lpath-prop)
+              (all (el-get-as-list lpath-prop))
               ;; We use '(nil) instead of the empty list because nil
               ;; is equivalent to `auto'. Nil elements of list are
               ;; silently skipped, so this is ok.
@@ -125,15 +128,27 @@ PACKAGE's load-path will be compiled.
     ;; compile-prop must now be a list of relative paths
     (unless (listp compile-prop)
       el-get-error ("Unrecognized compile property: %S" compile-prop))
+    ;; Resolve paths relative to package install dir
+    (setq compile-prop
+          (loop for p in compile-prop
+                if p collect (expand-file-name p install-dir)))
     ;; Search each path for elisp files and collect into a single list
+    (el-get-debug-message "Searching for files to compile for package %s in: %S"
+                          package compile-prop)
     (mapcan #'el-get-find-all-elisp-files
             (remove-if-not #'stringp compile-prop))))
 
 ;; TODO: Add package and dependencies' load paths to load-path before compiling
 (defsubst el-get-byte-compile-package (package)
   "Do byte-compilation for PACKAGE."
-  (el-get-byte-compile-files
-   (el-get-assemble-files-for-byte-compilation package)))
+  (let ((bytecomp-files (el-get-assemble-files-for-byte-compilation package)))
+    (if bytecomp-files
+        (progn
+          (el-get-debug-message "Byte-compileing files for package %s: %S"
+                                package bytecomp-files)
+          (el-get-byte-compile-files bytecomp-files))
+      (el-get-debug-message "Nothing to byte-compile for package %s."
+                            package))))
 
 (provide 'el-get-bytecomp)
 ;;; el-get-bytecomp.el ends here
