@@ -84,9 +84,7 @@ found. TODO DOC"
    do (setq
        next-recipe
        (when (file-exists-p rfile)
-         (condition-case nil
-             (el-get-read-recipe-file rfile)
-           (error nil))))
+         (el-get-read-recipe-file rfile)))
    if next-recipe
    if (el-get-recipe-auto-generated-p next-recipe)
    do (unless auto-recipe (setq auto-recipe next-recipe))
