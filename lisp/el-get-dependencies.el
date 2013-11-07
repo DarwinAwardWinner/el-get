@@ -51,6 +51,7 @@ any recipe that should be skipped while walking the dependency
 graph. For example, if you only want a dependency graph of
 not-yet-installed pacakges, you could use
 `el-get-package-installed-p'."
+  (declare (indent 1))
   (let* (;; Convert OVERRIDES to a lookup (hash) table mapping
          ;; recipe names to full definitions.
          (overrides (el-get-make-recipe-override-table overrides))
@@ -137,8 +138,9 @@ the packages are installed in the order given by the return list,
 there will be no dependency issues.
 
 Additional keyword arguments are passed to `el-get-dependency-graph'."
+  (declare (indent 1))
   (el-get-linearize-dependency-graph
-   (apply #'el-get-dependency-graph recipes el-get-dep-graph-args)))
+   (apply #'el-get-dependency-graph (el-get-as-list recipes) el-get-dep-graph-args)))
 
 ;; TODO Test this
 (defun el-get-reverse-dependency-graph (graph)

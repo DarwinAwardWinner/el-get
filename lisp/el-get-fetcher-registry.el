@@ -94,10 +94,9 @@ is a predicate for the provided value to satisfy.")
                                   el-get-fetcher-optional-props)))))
     (when errors
      (el-get-error
-      (mapconcat #'identity
-                 (cons "Errors encountered during fetcher validation:"
-                       errors)
-                 "\n")))))
+      "Errors encountered during fetcher validation:\n%s\n\nFetcher definition was:\n%S"
+      (mapconcat #'identity errors "\n")
+      def))))
 
 (defvar el-get-fetchers (make-hash-table :size 20)
   "Hash table of registered package fetching methods.
@@ -264,7 +263,7 @@ for both real and virtual fetchers:
   have :url property\". The validation function may assume that
   the `:name' and `:type' properties have already been validated."
   (declare (indent defun))
-  (el-get-set-fetcher (plist-get props :type) props))
+  (el-get-set-fetcher (plist-get def :type) def))
 
 (defun el-get-register-fetcher-alias (newtype oldtype)
   "Register NEWTYPE as an alias for OLDTYPE.
@@ -279,7 +278,7 @@ property to OLDTYPE and leaves the rest of the recipe alone."
    :type newtype
    :filter
    `(lambda (recipe)
-      (el-get-recipe-put recipe :type ,oldtype))))
+      (el-get-recipe-put recipe :type ',oldtype))))
 
 (provide 'el-get-fetcher-registry)
 ;;; el-get-fetcher-registry.el ends here

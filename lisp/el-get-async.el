@@ -27,6 +27,7 @@
 (require 'cl)
 (require 'async)
 (require 'el-get-variables)
+(require 'el-get-internals)
 
 ;; TODO Move to appropriate place
 (defconst el-get-emacs (concat invocation-directory invocation-name)

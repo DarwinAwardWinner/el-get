@@ -1,4 +1,30 @@
-(require 'cl)
+;;; el-get-file-fetcher.el --- Fetcher for single-file packages
+
+;; Copyright (C) 2013  Ryan C. Thompson
+
+;; Author: Ryan C. Thompson(require 'cl) <rct@thompsonclan.org>
+;; Keywords:
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;;
+
+;;; Code:
+
+
 (require 'url-parse)
 (require 'el-get-internals)
 (require 'el-get-recipe-manip)
@@ -76,7 +102,7 @@ If no file name can be determined from the URL, an error is signaled."
   )
 
 (defun el-get-file-compute-checksum (&rest WHAT_SHOULD_ARGS_BE?)
-  el-get-error "UNIMPLEMENTED")
+  (el-get-error "UNIMPLEMENTED"))
 
 (el-get-register-fetcher
   :type 'file
@@ -87,4 +113,7 @@ If no file name can be determined from the URL, an error is signaled."
   #'(lambda (recipe prop)
       (case prop
         (:file-name (el-get-file-make-local-name recipe)))
-        (:website (el-get-recipe-get recipe :url)))))
+        (:website (el-get-recipe-get recipe :url))))
+
+(provide 'el-get-file-fetcher)
+;;; el-get-file-fetcher.el ends here

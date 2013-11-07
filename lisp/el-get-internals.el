@@ -40,6 +40,22 @@ function call (i.e. an unquoted list).)"
      ;; non-nil.
      (functionp arg))))
 
+(defsubst el-get-prin1-to-string (object)
+  "Same as `prin1-to-string' but ignores `print-level' and `print-length'."
+  (let (print-level print-length)
+    (prin1-to-string object)))
+
+(defsubst el-get-pp-to-string (object)
+  "Same as `pp-to-string'.
+
+The only difference is that this falls back to
+`el-get-prin1-to-string' in cases where `pp-to-string' throws an
+error."
+  (let (print-level print-length)
+    (condition-case nil
+        (pp-to-string object)
+      (error (el-get-prin1-to-string object)))))
+
 (defun el-get-print-to-string (object &optional pretty)
   "Return string representation of lisp object.
 
@@ -48,7 +64,9 @@ Unlike the Emacs builtin printing functions, this ignores
 possible the returned string will be a complete representation of
 the original object."
   (let (print-level print-length)
-    (funcall (if pretty #'pp-to-string #'prin1-to-string)
+    (funcall (if pretty
+                 #'el-get-pp-to-string
+               #'el-get-prin1-to-string)
              object)))
 ;; If pretty is a literal, we can pre-decide which printing function
 ;; to use at compile-time.
@@ -57,7 +75,9 @@ the original object."
   (condition-case nil
       (let ((print-func
              (when (el-get-arg-is-literal-or-quoted pretty)
-               (if (eval pretty) #'pp-to-string #'prin1-to-string))))
+               (if (eval pretty)
+                   #'el-get-pp-to-string
+                 #'el-get-prin1-to-string))))
         (if print-func
             `(let (print-level print-length)
                (,print-func ,object))
@@ -98,7 +118,7 @@ prefixed by \"el-get: \"."
 (put 'el-get-error 'error-conditions
      '(el-get-error error))
 (put 'el-get-error 'error-message
-     "el-get error")
+     "El-get error")
 
 (defun el-get-error (string &rest args)
   "Raise an error related to el-get.
@@ -330,16 +350,20 @@ follows:
     (setq optional-props (el-get-hash-to-plist optional-props)))
   (let ((errors nil))
     (cl-loop for (prop pred) on required-props by #'cddr
+             if (eq (car-safe pred) 'function)
+             do (setq pred (eval pred))
              for value = (funcall getter collection prop)
              unless (funcall pred value)
-             do (push (format "Value of required property %s fails predicate %s"
-                              prop pred)
+             do (push (format
+                       "Value of required property %s fails predicate %s.\nThe value was: %S"
+                       prop pred value)
                       errors))
     (cl-loop for (prop pred) on optional-props by #'cddr
              for value = (funcall getter collection prop)
              unless (or (null value) (funcall pred value))
-             do (push (format "Value of optional property %s fails predicate %s"
-                              prop pred)
+             do (push (format
+                       "Value of optional property %s fails predicate %s.\nThe value was: %S"
+                       prop pred value)
                       errors))
     (unless allow-extra
       (let ((extra-props
@@ -411,7 +435,7 @@ nil."
         for key = (funcall key-func obj)
         for val = (funcall value-func obj)
         do (when (or key allow-nil-key)
-             (puthash key obj table))
+             (puthash key val table))
         finally return table))
 
 (defun el-get-nonempty-string-p (str)

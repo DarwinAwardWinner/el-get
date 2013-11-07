@@ -111,19 +111,22 @@ have that name in order to validate."
           ;; Type-independent validation
           (setq errors
                 (el-get-validate-recipe-properties recipe
-                  `(:name
+                  `(:name #'el-get-bindable-symbol-p
+                    :name
                     ,(if expected-name
-                         (apply-partially #'string= expected-name)
-                       #'stringp)
+                         (lambda (name)
+                           (string= (el-get-as-string expected-name)
+                                    (el-get-as-string name)))
+                       #'identity)
                     :type #'el-get-bindable-symbol-p)
-                  nil 'allow-extra)
+                  nil))
           ;; Type-specific validation, only if we passed the above
           (unless errors
             (setq errors
                   (el-get-as-list
                    (funcall (or (el-get-fetcher-op recipe :validate)
                                 #'ignore)
-                            recipe))))))
+                            recipe)))))
       ;; If the above code actually throws an error, record that in
       ;; the error list.
       (error (add-to-list
@@ -218,7 +221,7 @@ If RECIPE is already of a real type, is is returned unchanged."
                   (el-get-fetcher-op recipe :filter)))
         if validate
         do (el-get-validate-recipe recipe)
-        if non-recursive return recipe
+        if (not recursive) return recipe
         finally return recipe))
 
 (defsubst el-get-make-recipe-override-table (recipes)

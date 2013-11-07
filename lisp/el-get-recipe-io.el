@@ -92,7 +92,7 @@ found. TODO DOC"
    do (unless auto-recipe (setq auto-recipe next-recipe))
    else return next-recipe
    finally return (or auto-recipe
-                      (error "Could not find a recipe named %s" name))))
+                      (el-get-error "Could not find a recipe named %s" name))))
 
 (defun* el-get-resolve-recipe (recipe &key overrides devirtualize)
   "Return full definition for RECIPE.
@@ -119,12 +119,18 @@ it."
           (el-get-make-recipe-override-table overrides))
          (resolved-recipe
           (cond
+           ((stringp recipe)
+            ;; Recipe name as string; convert to symbol and recurse
+            (el-get-resolve-recipe (el-get-as-symbol recipe)
+              :overrides overrides
+              :devirtualize devirtualize))
            ((symbolp recipe)
             ;; Just a recipe name; lookup in overrides or else convert
             ;; to minimal list '(:name NAME) and re-call
             (el-get-resolve-recipe
                 (gethash recipe overrides `(:name ,recipe))
-              :overrides overrides))
+              :overrides overrides
+              :devirtualize devirtualize))
            ((and (listp recipe) (el-get-recipe-get recipe :type))
             ;; Full recipe; return as as
             recipe)

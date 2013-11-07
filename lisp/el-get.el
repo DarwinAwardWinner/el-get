@@ -77,8 +77,8 @@
    ".."
    (file-name-directory
     (or load-file-name
-        (locate-library "el-get-internals")
-        (when (string-match-p "el-get-internals.el\\'"
+        (locate-library "el-get")
+        (when (string-match-p "el-get.el\\'"
                               buffer-file-name)
           buffer-file-name)
         (error "Cannot determine path to el-get."))))
@@ -111,6 +111,10 @@
 (require-verbose 'el-get-recipe-io)
 (require-verbose 'el-get-lock)
 (require-verbose 'el-get-bytecomp)
+(require-verbose 'el-get-noop-fetcher)
+(require-verbose 'el-get-testvirt-fetcher)
+(require-verbose 'el-get-file-fetcher)
+(require-verbose 'el-get-dependencies)
 
 (message "Finished loading El-get!")
 
