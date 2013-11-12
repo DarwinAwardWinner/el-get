@@ -28,6 +28,7 @@
 (require 'url-parse)
 (require 'el-get-internals)
 (require 'el-get-recipe-manip)
+(require 'el-get-download)
 
 (defconst el-get-file-valid-url-protocols
   '("file" "http" "https" "ftp")

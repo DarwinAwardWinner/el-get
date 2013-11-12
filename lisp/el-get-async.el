@@ -28,6 +28,7 @@
 (require 'async)
 (require 'el-get-variables)
 (require 'el-get-internals)
+(require 'el-get-download)
 
 ;; TODO Move to appropriate place
 (defconst el-get-emacs (concat invocation-directory invocation-name)
@@ -88,7 +89,7 @@ The following keyword arguments are available:
            (list '(el-get-in-subprocess . t)
                  'el-get-host-timestamp-directory
                  'el-get-download-default-wait
-                 'el-get-download-wait-alist))
+                 'el-get-download-wait-alist)))
          (export-variables-setq-list
           (loop
            for item in export-variables
@@ -109,16 +110,18 @@ The following keyword arguments are available:
                      (car item) (cdr item))
            ;; Collect as one big list, the arg list to `setq'
            nconc (list (car item) (cdr item))))
-         (full-expr
-          `(progn
+         (full-lambda
+          `(lambda ()
              ;; Set load path before loading things
              (setq load-path ',(el-get-as-list subproc-load-path))
              (mapc #'require ',(el-get-as-list require-features))
              (mapc #'load ',(el-get-as-list load-files))
-             (setq ,@export-variables)
+             (setq ,@export-variables-setq-list)
              (cd-absolute ,subproc-default-directory)
              ,expr)))
-    (async-start `(lambda () ,full-expr) finish-func)))
+    (el-get-debug-message "Executing function asynchronously: %s"
+                          (el-get-print-to-string full-lambda t))
+    (async-start full-lambda finish-func)))
 
 (defun el-get-sandbox-eval (expr &rest kwargs)
   "Eval EXPR in a clean batch-mode Emacs subprocess.

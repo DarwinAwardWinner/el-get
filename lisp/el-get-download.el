@@ -64,7 +64,7 @@ parsed into url structs."
 
 This file is used to record the first time at which the next
 download may be initiated from HOST."
-  (concat (file-name-as-directory el-get-download-lock-directory)
+  (concat (file-name-as-directory el-get-host-timestamp-directory)
           (format "timestamp-%s.el" (file-name-nondirectory host))))
 
 (defun el-get-read-timestamp-file (filename)
@@ -104,9 +104,11 @@ stamp, return nil."
       (el-get-error
        "Timestamp must be a floating point value.")))
   (with-temp-buffer
-    (insert (or timestamp)
-            (float-time))
-    (write-file filename)))
+    (insert
+     (el-get-print-to-string
+      (or timestamp)
+      (float-time)))
+    (el-get-write-file filename)))
 
 (defun el-get-download-file (url newname &optional num-attempts)
   "Download URL to NEWNAME synchronously.
@@ -141,7 +143,7 @@ successful or not."
         (setq num-attempts (max (floor (or num-attempts 1)) 1))
         (unwind-protect
             (loop with remaining-attempts = num-attempts
-                  while (remaining-attempts > 1)
+                  while (> remaining-attempts 1)
                   for attempt-num = (1+ (- num-attempts remaining-attempts))
                   do (el-get-debug-message
                       "Attempt #%s to download %s to %s"
