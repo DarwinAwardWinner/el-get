@@ -117,6 +117,7 @@
 (require-verbose 'el-get-dependencies)
 (require-verbose 'el-get-package-internals)
 (require-verbose 'el-get-package-manip)
+(require-verbose 'el-get-download)
 
 (message "Finished loading El-get!")
 
