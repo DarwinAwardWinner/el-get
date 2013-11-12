@@ -665,5 +665,11 @@ Throws an error for all other inputs."
    (t
     (el-get-error "Not a URL: %S" url))))
 
+(defun el-get-write-file (filename)
+  "Like `write-file', but prevents backup & auto-save files."
+  (let ((buffer-auto-save-file-name nil)
+        (make-backup-files nil))
+    (write-file filename)))
+
 (provide 'el-get-internals)
 ;;; el-get-internals.el ends here

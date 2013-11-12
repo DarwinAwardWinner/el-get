@@ -152,7 +152,7 @@ PLIST is validated before attempting to write it."
       (insert (format ";; Status for %s -*- mode: emacs-lisp -*-\n"
                       package)
               (el-get-print-to-string plist 'pretty))
-      (write-file (el-get-status-file package))))
+      (el-get-write-file (el-get-status-file package))))
   ;; Update the cache if we have the lock
   (when (el-get-holding-package-lock package)
     (setq el-get-package-status-cache

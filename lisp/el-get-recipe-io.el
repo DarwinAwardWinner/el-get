@@ -67,6 +67,8 @@ TODO DOC Explain rules for conflicting recipes"
       (insert (format ";; Recipe for %s -*- mode: emacs-lisp -*-\n"
                       (file-name-nondirectory filename))
               (el-get-print-to-string recipe 'pretty))
+      ;; We don't use `el-get-write-file' here because if the recipe
+      ;; gets corrupted, we do want the backup file to exist.
       (write-file filename))))
 
 (defun el-get-read-recipe (name)
