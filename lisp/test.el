@@ -99,6 +99,29 @@
 (el-get-build-package 'c)
 (el-get-remove-package 'c)
 
+(el-get-normalize-build-property
+ '("echo HELLO FROM SINGLE-STRING COMMAND PACKAGE D"
+   ("echo" "HELLO FROM PACKAGE D")))
+
+(el-get-fetch-package
+ '(:name
+   d
+   :type null
+   :build
+   ("echo HELLO FROM SINGLE-STRING COMMAND PACKAGE D"
+    ("echo" "HELLO FROM PACKAGE D"))))
+
+(el-get-fetch-package
+ '(:name
+   e
+   :type null
+   :build
+   (lambda ()
+     (message "HELLO FROM PACAKGE E"))))
+
+(el-get-build-package 'd)
+(el-get-build-package 'e)
+
 (el-get-fetch-package (el-get-read-recipe 'ack))
 (el-get-build-package 'ack)
 (el-get-remove-package 'ack)

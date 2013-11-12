@@ -219,8 +219,8 @@ any characters with special meaning to the shell (including
 spaces). Such commands should be converted to the list-of-strings
 form.
 
-With optional argument PACKAGE, it will be included in any error or warning messages
-messages."
+With optional argument PACKAGE, it will be included in any error
+or warning messages."
   (cond
    ((stringp cmd)
     ;; Convert to `("sh" "-c" ,cmd) or equivalent
@@ -261,7 +261,8 @@ A recipe's `:build' property can be any one of the following:
   preferred because it will avoid shell interpolation.
 
 In either case, BUILDPROP will be comma-interpolated as if it
-were backquoted, unless it is prefixed with a normal quote.
+were backquoted, unless it is prefixed with a normal quote. (The
+backquote may also be included explicitly.)
 
 Any other form will result in an error.
 
@@ -287,7 +288,7 @@ messages."
     buildprop)
    ;; List of commands: normalize them
    ((listp buildprop)
-    (mapcar (lambda (bc) (el-get-normalize-build-command buildprop package))
+    (mapcar (lambda (bc) (el-get-normalize-build-command bc package))
             buildprop))
    ;; Anything else: invalid
    (t (el-get-error "Invalid `:build' property%s: %S"
@@ -299,6 +300,7 @@ messages."
 
 BUILDPROP should already be normalized."
   (el-get-with-cd-to-dir (el-get-package-install-directory package)
+    ;; TODO: Figure out where to send the output of commands/functions
     (if (functionp buildprop)
         (progn
           (el-get-debug-message "Calling build function for package %s: %S"
