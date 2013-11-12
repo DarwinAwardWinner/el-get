@@ -13,6 +13,7 @@
 ;;; Code:
 
 (require 'cl)
+(require 'url-parse)
 (require 'el-get-variables)
 
 (defsubst el-get-arg-is-literal-or-quoted (arg)
@@ -619,6 +620,50 @@ the previous directory."
           (cd ,(eval dir))
           ,@body)
       (cd prev-def-dir))))
+
+(defun el-get-sleep-until-time (time)
+  "Sleep until TIME.
+
+This uses floating point times, so it is not precise. If TIME is
+in the past or nil, this does nothing."
+  (when time
+    (while (< (float-time) time)
+      (sleep-for (- time (float-time))))))
+
+(defmacro el-get-do-and-wait (seconds &rest body)
+  "Do BODY, then wait until SECONDS seconds after BODY was started.
+
+If SECONDS is 5 and BODY takes 3 seconds to evaluate, then this
+will wait an additional 2 seconds. If BODY takes longer than
+SECONDS, this will return immediately after BODY finishes. The
+return value is the return value of BODY.
+
+SECONDS is evaluated normally. This function relies on floating
+point support."
+  (declare (indent 1))
+  `(let ((start-time (float-time)))
+     (prog1
+         (progn
+           ,@body)
+       (el-get-sleep-until-time (+ start-time ,(eval seconds))))))
+
+(defun el-get-as-url-struct (url)
+  "Parse URL into a URL struct, or return it if it already is one."
+  (if (url-p url)
+        url
+      (url-generic-parse-url url)))
+
+(defun el-get-as-url-string (url)
+  "Convert a URL struct into a string, or return a string as is.
+
+Throws an error for all other inputs."
+  (cond
+   ((url-p url)
+    (url-recreate-url url))
+   ((stringp url)
+    url)
+   (t
+    (el-get-error "Not a URL: %S" url))))
 
 (provide 'el-get-internals)
 ;;; el-get-internals.el ends here

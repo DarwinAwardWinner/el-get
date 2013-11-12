@@ -33,18 +33,24 @@
 (defconst el-get-emacs (concat invocation-directory invocation-name)
   "Path to find the currently running emacs.")
 
-(defun* el-get-async-start (expr &key
-                            finish-func
-                            (subproc-default-directory
-                             default-directory)
-                            (subproc-load-path load-path)
-                            require-features load-files
-                            export-variables)
+(defconst el-get-async-vars-to-export
+  '(loa))
+
+(defun* el-get-async-start
+    (expr &key
+          finish-func
+          (subproc-default-directory default-directory)
+          (subproc-load-path load-path)
+          require-features
+          load-files
+          export-variables)
   "Eval EXPR asynchronously in a batch-mode Emacs subprocess.
 
 The returned value is the future returned by `async-start'. It
 can be manipulated with all the normal async functions, such as
-`async-get'.
+`async-get'. Unlike `async-start', this is a function, not a
+macro, and the first argument is an expression, not a
+zero-argument function.
 
 The following keyword arguments are available:
 
@@ -73,7 +79,17 @@ The following keyword arguments are available:
 
 * :load-files - Subprocess will `load' each of these files before
   evaluating EXPR."
-  (let* ((export-variables-setq-list
+  (let* ((export-variables
+          (append
+           export-variables
+           ;; These variables are always exported unconditionally and
+           ;; override any user-provided values because they are
+           ;; required for el-get subprocesses to work correctly.
+           (list '(el-get-in-subprocess . t)
+                 'el-get-host-timestamp-directory
+                 'el-get-download-default-wait
+                 'el-get-download-wait-alist))
+         (export-variables-setq-list
           (loop
            for item in export-variables
            ;; Convert symbol to `(cons symbol (eval symbol))'
@@ -95,11 +111,11 @@ The following keyword arguments are available:
            nconc (list (car item) (cdr item))))
          (full-expr
           `(progn
+             ;; Set load path before loading things
              (setq load-path ',(el-get-as-list subproc-load-path))
              (mapc #'require ',(el-get-as-list require-features))
              (mapc #'load ',(el-get-as-list load-files))
-             (setq ,@export-variables
-                   el-get-in-subprocess t)
+             (setq ,@export-variables)
              (cd-absolute ,subproc-default-directory)
              ,expr)))
     (async-start `(lambda () ,full-expr) finish-func)))
