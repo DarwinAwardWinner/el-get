@@ -80,7 +80,7 @@ parsed into url structs."
 This file is used to record the first time at which the next
 download may be initiated from HOST."
   (concat (file-name-as-directory el-get-host-timestamp-directory)
-          (format "timestamp-%s.el" (file-name-nondirectory host))))
+          (format "timestamp-%s.txt" (file-name-nondirectory host))))
 
 (defun el-get-read-timestamp-file (filename)
   "Read timestamp from FILENAME.
