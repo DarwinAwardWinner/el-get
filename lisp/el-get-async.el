@@ -95,7 +95,7 @@ The following keyword arguments are available:
            for item in export-variables
            ;; Convert symbol to `(cons symbol (eval symbol))'
            if (symbolp item)
-           do (setq item (cons item (eval item)))
+           do (setq item (cons item (list 'quote (eval item))))
            ;; Must be a cons
            unless (consp item)
            do (error "Unknown :export-variables variable specification: %S"
