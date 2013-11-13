@@ -153,6 +153,16 @@ on the stack will be used."
      (apply #'format format-string args)
      :debug)))
 
+(defun el-get-warning-message (format-string &rest args)
+  "Issue a warning message related to el-get."
+  (let ((format-string
+         (concat "In el-get frame %S:\n" format-string))
+        (args (cons (el-get-caller-frame 'el-get-debug-message)
+                    args)))
+    (el-get-display-warning
+     (apply #'format format-string args)
+     :warning)))
+
 (defun el-get-message (format-string &rest args)
   "Display a message related to el-get.
 
@@ -578,7 +588,7 @@ that is intended to be called only within an asynchronous
 subprocess. Optional argument is the name of the function, which
 is used to make the warning message more informative."
   (unless el-get-in-subprocess
-    (el-get-display-warning
+    (el-get-warning-message
      (if function-name
          (format "Subprocess-only function %s called in main process"
                  function-name)

@@ -175,7 +175,7 @@ With optional second arg WARN-IF-UNLOCKED, a warning will be
 issued if FILENAME is not locked when this function is called."
   (unless (el-get-holding-file-lock filename)
             (when warn-if-unlocked
-              (el-get-display-warning "File %S was already unlocked"
+              (el-get-warning-message "File %S was already unlocked"
                                       filename)))
   (let ((lockbuf
          (if (bufferp filename)

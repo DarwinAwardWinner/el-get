@@ -228,10 +228,11 @@ or warning messages."
                  shell-command-switch
                  cmd)
       (when (not (string= cmd (shell-quote-argument cmd)))
-        (el-get-display-warning "Build command %S%s will be shell-interpolated. To bypass shell interpolation, the command should be written as a list of strings instead."
-                                cmd (if package
-                                        (concat " in package " package)
-                                      "")))))
+        (el-get-warning-message
+         "Build command %S%s will be shell-interpolated. To bypass shell interpolation, the command should be written as a list of strings instead."
+         cmd (if package
+                 (concat " in package " package)
+               "")))))
    ((listp cmd)
     (prog1 cmd
       (loop for s in cmd

@@ -124,7 +124,7 @@ validate."
   ;; Don't use `el-get-fetcher-registered-p' here because it isn't
   ;; defined yet.
   (when (gethash type el-get-fetchers)
-    (el-get-display-warning (format "Re-registering recipe type %s" type)
+    (el-get-warning-message (format "Re-registering recipe type %s" type)
                             :debug))
   ;; If DEF was passed as a plist, convert to hash table
   (when (listp def)
@@ -143,7 +143,7 @@ error. TODO"
   (cond
    ;; String naming an operation
    ((stringp operation)
-    (el-get-display-warning "String used instead of symbol to name an operation")
+    (el-get-warning-message "String used instead of symbol to name an operation")
     (el-get-fetcher-prop type (intern operation)))
    ;; Hash table = Fetcher definition
    ((hash-table-p type)
@@ -153,7 +153,7 @@ error. TODO"
     (el-get-fetcher-prop (el-get-get-fetcher type) operation))
    ;; String naming a fetcher
    ((stringp type)
-    (el-get-display-warning "String used instead of symbol to name a type")
+    (el-get-warning-message "String used instead of symbol to name a type")
     (el-get-fetcher-prop (intern type) operation))
    ;; List = Recipe definition
    ((listp type)

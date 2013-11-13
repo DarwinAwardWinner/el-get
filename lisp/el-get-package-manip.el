@@ -38,7 +38,7 @@ This just removes PACKAGE's directory and all its contents.
 PACKAGE may also be a recipe, in which case `el-get-recipe-name'
 will be used to get name of the package to be removed."
   (when (listp package)
-    (el-get-display-warning
+    (el-get-warning-message
      "Recipe passed to `el-get-remove' instead of package name: %S"
      package)
     (setq package (el-get-recipe-name package)))

@@ -107,7 +107,7 @@ stamp, return nil."
       (float-time timestamp))
      ;; Anything else is invalid
      (t
-      (el-get-display-warning
+      (el-get-warning-message
        "File %s does not contain a valid time specification: %S"
        filename timestamp)
       nil))))
