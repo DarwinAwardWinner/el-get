@@ -103,6 +103,38 @@ to OBJECT using TEST. The default TEST is `equal'."
       (el-get-error "Object failed to serialize to string: %S" object))
     result-string))
 
+(defun el-get-combine-predicates (op &rest predicates)
+  "Combine PREDICATES with OP.
+
+OP should be a reduction function such as `and' or `or' that
+takes any number of arguments. Each of PREDICATES should be a
+function of one argument. The returned value is a predicate that
+implements the requested combination."
+  (declare (indent 1))
+  `(lambda (obj)
+     (,op ,@(loop for pred in predicates
+                  collect (list pred 'obj)))))
+;; If all arguments are quoted literals, we can pre-evaluate this
+;; function at compile-time.
+(cl-define-compiler-macro el-get-combine-predicates
+  (&whole form op &rest predicates)
+  (condition-case err
+      (progn
+        (when (cl-find-if-not #'el-get-arg-is-literal-or-quoted
+                              (cons op predicates))
+          (error "Not all literals"))
+        (when (cl-find-if-not #'indirect-function
+                              (mapcar #'eval (cons op predicates)))
+          (error "Not all functions"))
+        ;; No errors, return the evaluated form
+        (eval form)
+        ;; `(lambda (obj)
+        ;;    (,(eval op) ,@(loop for pred in predicates
+        ;;                 collect (list (eval pred) 'obj))))
+        )
+    ;; Abort expansion on error
+    (error form)))
+
 (defsubst el-get-display-warning (message &optional level buffer-name)
   "Same as `display-warning' with TYPE set to `el-get'."
   (display-warning 'el-get message level buffer-name))
@@ -201,6 +233,8 @@ Also, the raised error has an additional condition
 ;; Presumably it's easier for users who don't use the customization
 ;; interface to write such structures as raw elisp.
 ;;
+
+;; TODO Fix docstrings
 (defsubst el-get-as-string (symbol-or-string)
   "If SYMBOL-OR-STRING is already a string, return it.  Otherwise
 convert it to a string and return that."
@@ -216,16 +250,27 @@ convert it to a symbol and return that."
     (intern string-or-symbol)))
 
 (defsubst el-get-as-list (element-or-list)
-  "If ELEMENT-OR-LIST is already a list, return it.  Otherwise
+  "If ELEMENT-OR-LIST is already a list, return it. Otherwise
 returning a list that contains it (and only it)."
   (if (listp element-or-list) element-or-list
       (list element-or-list)))
 
 (defun el-get-list-of-strings-p (obj)
-  (or (and (consp obj)
-           (stringp (car obj))
-           (el-get-list-of-strings-p (cdr obj)))
-      (null obj)))
+  "Return non-nil if OBJ is a list of only strings."
+  (and
+   ;; OBJ is list
+   (listp obj)
+   ;; OBJ does not contain non-string objects
+   (not (cl-find-if-not #'stringp obj))))
+
+(defun el-get-list-of-strings-or-nils-p (obj)
+  "Return non-nil if OBJ is a list of only strings or nils."
+  (and
+   ;; OBJ is list
+   (listp obj)
+   ;; OBJ does not contain non-string objects
+   (not (cl-find-if-not
+         (lambda (elem) (or (null elem)))#'stringp obj))))
 
 ;; Property list/hash table interconversion
 (defun el-get-plist-to-hash (plist &rest make-hash-table-args)
@@ -574,6 +619,37 @@ operate on subdirectories of `el-get-install-dir'."
            (t
             (delete-file f)))))))
 
+(defun* el-get-link-or-copy (source dest &key absolute hardlink)
+  "Symlink or copy SOURCE file to DEST.
+
+This function attempts to create a symbolic link at DEST pointing
+at the relative path to SOURCE. If this is not possible, it
+instead attempts to copy SOURCE to DEST. Keyword argument
+ABSOLUTE makes the symbolic link absolute instead of
+relative. Keyword argument HARDLINK makes this function try to
+create a hard link instead of a symbolic link.
+
+This function should be used when a copy is ok, but a link is
+preferred in order to save disk space.
+
+DEST is *ALWAYS* unconditionally overwritten."
+  (condition-case nil
+      ;; Try to link
+      (if hardlink
+          (add-name-to-file source dest t)
+        (make-symbolic-link
+         ;; Use absolute or relative path
+         (if absolute
+             (expand-file-name source)
+           (file-relative-name
+            (expand-file-name source)
+            (file-name-directory
+             (expand-file-name dest))))
+         dest t))
+    ;; On error, copy instead
+    (error
+     (copy-file source dest t))))
+
 (defsubst el-get-file-basename-p (filename)
   "Return non-nil if FILENAME contains no directory separators.
 
@@ -692,6 +768,25 @@ matches KEY, which should be a string."
         return elem
         ;; No match => nil
         finally return nil))
+
+(defun el-get-find-all-elisp-files (path &optional recursive)
+  "Find all Emacs Lisp files in PATH.
+
+If PATH is a file, is is just returned in a list. If PATH is a
+directory, it is searched for files ending in \".el\" and a list
+of the found files is returned. With optional arg RECURSIVE, also
+search in subdirectories."
+  (cond
+   ((file-directory-p path)
+    (loop for subpath in (el-get-directory-contents path t nil t)
+          if (file-directory-p subpath)
+          ;; Only recurse into directories if RECURSIVE is non-nil
+          nconc (when recursive
+                  (el-get-find-all-elisp-files subpath recursive))
+          else if (el-get-string-suffix-p ".el" subpath)
+          nconc (list subpath)))
+   ((file-exists-p path)
+    (list path))))
 
 (provide 'el-get-internals)
 ;;; el-get-internals.el ends here

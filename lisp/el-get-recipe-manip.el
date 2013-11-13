@@ -118,7 +118,18 @@ have that name in order to validate."
                            (string= (el-get-as-string expected-name)
                                     (el-get-as-string name)))
                        #'identity)
-                    :type #'el-get-bindable-symbol-p)
+                    :type #'el-get-bindable-symbol-p
+                    :compile
+                    ,(el-get-combine-predicates #'or
+                       #'null
+                       (lambda (val) (memq val '(auto none all)))
+                       #'stringp
+                       #'el-get-list-of-strings-or-nils-p)
+                    :autoloads
+                    ,(el-get-combine-predicates #'or
+                       #'stringp
+                       (lambda (val) (memq val '(nil t)))
+                       #'el-get-list-of-strings-p))
                   nil))
           ;; Type-specific validation, only if we passed the above
           (unless errors

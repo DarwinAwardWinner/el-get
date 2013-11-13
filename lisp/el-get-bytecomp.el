@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'cl)
+(require 'el-get-internals)
 (require 'el-get-async)
 (require 'el-get-package-internals)
 
@@ -42,33 +43,18 @@ of whether that files appears to be up to date or not.
 Any additional arguments are passed as keyword arguments to
 `el-get-async'.
 
-Note: For convenience, if any element of FILES is nil, it will be
-skipped. However, any non-nil non-string value will result in an
-error."
+Note: For convenience, if FILES contains nil or the empty string,
+they will be skipped. However, any non-nil non-string value will
+result in an error."
   (loop for f in files
         if (null f)
         do (ignore)
         else if (stringp f)
-        do (el-get-sandbox-eval
-            `(progn (require 'bytecomp)
-                    (byte-recompile-file ,f 'force 0 'load)))
+        do (when (> (length f) 0)
+             (el-get-sandbox-eval
+              `(progn (require 'bytecomp)
+                      (byte-recompile-file ,f 'force 0 'load))))
         else do (el-get-error "Not a string: %S" f)))
-
-(defun el-get-find-all-elisp-files (path)
-  "Find all Emacs Lisp files in PATH.
-
-If PATH is a file, is is just returned in a list. If PATH is a
-directory, it is searched recursively for files ending in \".el\"
-and a list of the found files is returned."
-  (cond
-   ((file-directory-p path)
-    (loop for subpath in (el-get-directory-contents path t nil t)
-          if (file-directory-p subpath)
-          nconc (el-get-find-all-elisp-files subpath)
-          else if (el-get-string-suffix-p ".el" subpath)
-          nconc (list subpath)))
-   ((file-exists-p path)
-    (list path))))
 
 ;; TODO add compile prop to recipe validator
 (defun el-get-assemble-files-for-byte-compilation (package)
@@ -86,7 +72,9 @@ interpreted as follows:
   be compiled.
 
 * If it is a list, it will be taken as a list of paths to
-  compile, each interpreted as above. TODO CLARIFY NIL
+  compile, each interpreted as above. Note that an empty list
+  does not mean to compile nothing, but is equivalent to
+  `auto' (see below).
 
 * If it is the symbol `all', then all Emacs Lisp files in
 PACKAGE's load-path will be compiled.
@@ -98,10 +86,9 @@ PACKAGE's load-path will be compiled.
   `none' if the recipe has a `:build' property and `all' if it
   doesn't. This is the default behavior."
   (unless (memq (el-get-package-status package) '(fetched installed))
-    (el-get-error "Cannot byte-compile unfetched package: %s" package))
+    (el-get-error "Cannot find lisp files for unfetched package: %s" package))
   (let* ((recipe
-          (or (el-get-package-recipe package)
-              (error "Could not get recipe for package: %s" package)))
+          (el-get-package-recipe package t))
          (compile-prop (el-get-recipe-get recipe :compile))
          (build-prop (el-get-recipe-get recipe :build))
          (lpath-prop (el-get-recipe-get recipe :load-path))

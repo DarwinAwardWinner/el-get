@@ -27,8 +27,8 @@
 (require 'el-get-internals)
 (require 'el-get-variables)
 (require 'el-get-recipe-manip)
-(require 'el-get-bytecomp)
 (require 'el-get-package-internals)
+(require 'el-get-bytecomp)
 
 (defun el-get-remove-package (package)
   "Uninstall PACKAGE.

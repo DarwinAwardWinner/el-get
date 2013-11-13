@@ -40,7 +40,7 @@ set to `(cons PACKAGE STATUS-PLIST)', where PACKAGE is the name
 of the package and STATUS-PLIST is the contents of the status
 file for that package.")
 
-(defun el-get-package-base-directory (package)
+(defsubst el-get-package-base-directory (package)
   "Return the base directory for PACKAGE.
 
 Note that this just returns the path to the directory that will
@@ -53,12 +53,18 @@ See also `el-get-package-install-directory'."
       (el-get-error "Package name %S contains a directory separator" package))
     (expand-file-name package el-get-install-dir)))
 
+(defsubst el-get-expand-package-file-name (name package)
+  "Expand NAME relative to base directory for PACKAGE."
+  (expand-file-name
+   name
+   (el-get-package-base-directory package)))
+
 (defsubst el-get-package-install-directory (package)
   "Return the path where PACKAGE's files will be installed.
 
 This is always the \"pkg\" subdirectory of PACKAGE's base
 directory."
-  (expand-file-name "pkg" (el-get-package-base-directory package)))
+  (el-get-expand-package-file-name "pkg" package))
 
 (defsubst el-get-holding-package-lock (package)
   (el-get-holding-file-lock (el-get-package-base-directory package)))
@@ -89,7 +95,7 @@ Note that while this is a macro, PACKAGE is evaluated normally."
   "Return the path to the status file for PACKAGE.
 
 This file is not guaranteed to exist."
-  (expand-file-name ".status" (el-get-package-base-directory package)))
+  (el-get-expand-package-file-name ".status" package))
 
 (defsubst el-get-status-plist-valid (plist package)
   "Return non-nil if PLIST is a valid status plist for PACKAGE."
@@ -168,14 +174,18 @@ status."
   (or (plist-get (el-get-status-plist package) :status)
       'removed))
 
-(defun el-get-package-recipe (package)
+(defun el-get-package-recipe (package &optional must-exist)
   "Return the recipe used to fetch/install PACKAGE.
 
-Returns nil if PACKAGE is not installed."
+Returns nil if PACKAGE is not installed, unless optional second
+arg is non-nil, in which case it throws an error."
   (el-get-with-package-lock package
     (el-get-plist-bind (el-get-status-plist package)
-      (when (memq :status '(installed fetched))
-        :recipe))))
+      (if (memq :status '(installed fetched))
+          :recipe
+        (when must-exist
+          (el-get-error "Package %s has no recipe. Status plist was: %S"
+                        package (el-get-status-plist package)))))))
 
 (defun el-get-do-fetch (recipe)
   "Fetch package described by RECIPE unconditionally.
@@ -325,6 +335,14 @@ BUILDPROP should already be normalized."
                 (el-get-error
                  "Build command for package %s failed with exit code %s: %S"
                  package exitcode cmd))))))))
+
+(defsubst el-get-package-load-path (package)
+  "Return the `:load-path' property of PACKAGE's recipe.
+
+This always returns a list."
+  (el-get-as-list
+   (el-get-recipe-get (el-get-package-recipe package t)
+                      :load-path)))
 
 (provide 'el-get-package-internals)
 ;;; el-get-package-internals.el ends here
