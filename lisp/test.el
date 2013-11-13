@@ -124,7 +124,6 @@
 
 (el-get-fetch-package (el-get-read-recipe 'ack))
 (el-get-build-package 'ack)
-(el-get-remove-package 'ack)
 
 (condition-case err
     (el-get-fetch-package (el-get-read-recipe 'this-is-not-a-package))
