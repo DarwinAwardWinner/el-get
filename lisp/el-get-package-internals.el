@@ -299,28 +299,31 @@ messages."
   "Perform build instrutions BUILDPROP in install dir of PACKAGE.
 
 BUILDPROP should already be normalized."
-  (el-get-with-cd-to-dir (el-get-package-install-directory package)
-    ;; TODO: Figure out where to send the output of commands/functions
-    (if (functionp buildprop)
-        (progn
-          (el-get-debug-message "Calling build function for package %s: %S"
-                                package buildprop)
-          (funcall buildprop))
-      (loop
-       for cmd in buildprop
-       do (el-get-message "Running build command for package %s: %S"
-                          package cmd)
-       do (let ((exitcode
-                 (apply #'call-process
-                        (car cmd) nil nil nil
-                        (cdr cmd))))
-            (if (ignore-errors (= exitcode 0))
-                (el-get-debug-message
-                 "Build command succeeded for package %s: %S"
-                 package cmd)
-              (el-get-error
-               "Build command for package %s failed with exit code %s: %S"
-               package exitcode cmd)))))))
+  (el-get-with-package-lock package
+    (el-get-with-cd-to-dir (el-get-package-install-directory package)
+      ;; TODO: Figure out where to send the output of commands/functions
+      (if (functionp buildprop)
+          (progn
+            (el-get-debug-message
+             "Calling build function for package %s: %S"
+             package buildprop)
+            (funcall buildprop))
+        (loop
+         for cmd in buildprop
+         do (el-get-debug-message
+             "Running build command for package %s: %S"
+             package cmd)
+         do (let ((exitcode
+                   (apply #'call-process
+                          (car cmd) nil nil nil
+                          (cdr cmd))))
+              (if (ignore-errors (= exitcode 0))
+                  (el-get-debug-message
+                   "Build command succeeded for package %s: %S"
+                   package cmd)
+                (el-get-error
+                 "Build command for package %s failed with exit code %s: %S"
+                 package exitcode cmd))))))))
 
 (provide 'el-get-package-internals)
 ;;; el-get-package-internals.el ends here
