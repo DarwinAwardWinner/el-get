@@ -41,15 +41,30 @@
 This is used for hosts that have no entry in
 `el-get-download-wait-alist'.")
 
-(defcustom el-get-download-wait-alist nil
-  "Wait times between successive downloads from specific hosts."
-  :type '(alist :key-type (string :tag "Host")
-                :value-type (number :tag "Wait time (seconds)"
+(defcustom el-get-download-wait-alist
+  '(("repo\\.or\\.cz" . 2)
+    ("emacswiki\\.org" . 2)
+    ;; Github can handle it (we're still not downloading multiple
+    ;; things concurrently).
+    ("github\\.com" . 0))
+  "Wait times between successive downloads from specific hosts.
+
+This is an alist with regexps as keys and numbers as values. Any
+host that matches the regexp in a key uses the value as its
+inter-download wait time.
+
+Generally users should not need to customize this."
+  :type '(alist :key-type (regexp :tag "Host regexp")
+                :value-type (number :tag "Seconds to wait between downloads"
                                     :value 2.0)))
 
 (defun el-get-wait-time-for-host (host)
-  "Return the time to wait between "
-  (or (cdr (assoc host el-get-download-wait-alist))
+  "Return the time to wait between successive downloads from HOST.
+
+This is looked up in `el-get-download-wait-alist', using the
+default of `el-get-download-default-wait' for hosts that don't
+match any key."
+  (or (cdr (el-get-assoc-regexp host el-get-download-wait-alist))
       el-get-download-default-wait))
 
 (defsubst el-get-url-host (url)

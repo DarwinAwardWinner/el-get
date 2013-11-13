@@ -671,5 +671,17 @@ Throws an error for all other inputs."
         (make-backup-files nil))
     (write-file filename)))
 
+(defun el-get-assoc-regexp (key list)
+  "Like `assoc', but treats keys in LIST as regexps.
+
+Returns the first element of LIST whose car is a regexp that
+matches KEY, which should be a string."
+  (loop for elem in list
+        for key-regexp = (car list)
+        if (string-match-p key-regexp key)
+        return elem
+        ;; No match => nil
+        finally return nil))
+
 (provide 'el-get-internals)
 ;;; el-get-internals.el ends here
