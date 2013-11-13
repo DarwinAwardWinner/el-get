@@ -677,7 +677,7 @@ Throws an error for all other inputs."
 Returns the first element of LIST whose car is a regexp that
 matches KEY, which should be a string."
   (loop for elem in list
-        for key-regexp = (car list)
+        for key-regexp = (car elem)
         if (string-match-p key-regexp key)
         return elem
         ;; No match => nil
