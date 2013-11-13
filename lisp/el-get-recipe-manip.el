@@ -122,7 +122,11 @@ have that name in order to validate."
                                          (el-get-as-string name)))))
                     :type #'el-get-bindable-symbol-p)
                   ;; Optional properties
-                  `(:compile
+                  `(:depends
+                    ,(el-get-combine-predicates #'or
+                       #'symbolp
+                       #'el-get-list-of-symbols-p)
+                    :compile
                     ,(el-get-combine-predicates #'or
                        (lambda (val) (memq val '(auto none all)))
                        #'stringp
@@ -132,8 +136,26 @@ have that name in order to validate."
                        #'stringp
                        (apply-partially 'eq t)
                        #'el-get-list-of-strings-p)
-                    ;; TODO:
-                    ;; :load :features
+                    :info #'stringp
+                    :load
+                    ,(el-get-combine-predicates #'or
+                       #'stringp
+                       #'el-get-list-of-strings-p)
+                    :features
+                    ,(el-get-combine-predicates #'or
+                       #'symbolp
+                       #'el-get-list-of-symbols-p)
+                    :build
+                    ;; Returns nil if the normalizer throws an error
+                    (lambda (val)
+                      (condition-case nil
+                          (prog1 t
+                            (el-get-normalize-build-property val))
+                        (error nil)))
+                    :website #'stringp
+                    :description #'stringp
+                    :checksum #'stringp
+                    ;; TODO: :pre-init, :post-init, etc.
                     )))
           ;; Type-specific validation, only if we passed the above
           (unless errors
@@ -281,6 +303,95 @@ automatically generated recipe properties are also included."
   (declare (indent 1))
   (let ((body (cons 'progn body)))
     (el-get-substitute-recipe-keywords (eval recipe) body)))
+
+(defun el-get-normalize-build-command (cmd &optional package)
+  "Normalize a build command CMD.
+
+If CMD is a list of strings, return it. If it is a string, return
+a list of strings representing the same command. For any other
+value, an error is returned.
+
+For a CMD that is a string, a warning is issued if it contains
+any characters with special meaning to the shell (including
+spaces). Such commands should be converted to the list-of-strings
+form.
+
+With optional argument PACKAGE, it will be included in any error
+or warning messages."
+  (cond
+   ((stringp cmd)
+    ;; Convert to `("sh" "-c" ,cmd) or equivalent
+    (prog1 (list shell-file-name
+                 shell-command-switch
+                 cmd)
+      (when (not (string= cmd (shell-quote-argument cmd)))
+        (el-get-warning-message
+         "Build command %S%s will be shell-interpolated. To bypass shell interpolation, the command should be written as a list of strings instead."
+         cmd (if package
+                 (concat " in package " package)
+               "")))))
+   ((listp cmd)
+    (prog1 cmd
+      (loop for s in cmd
+            unless (stringp s)
+            do (el-get-error "Build command%s contains non-string arguments: %S"
+                             (if package
+                                 (concat " for package " package)
+                               "")
+                             cmd))))
+   (t (el-get-error "Invalid build command%s: %S"
+                    (if package
+                        (concat " for package " package)
+                      "")
+                    cmd))))
+
+(defun el-get-normalize-build-property (buildprop &optional package)
+  "Properly normalize a `:build' property of a recipe.
+
+A recipe's `:build' property can be any one of the following:
+
+* A zero-argument function, which will be called with
+  `default-directory' set to the directory in which the package
+  was fetched. This function should perform the build.
+
+* A list of build commands, where each build command is a list of
+  strings or a single string. The list-of-strings form is
+  preferred because it will avoid shell interpolation.
+
+In either case, BUILDPROP will be comma-interpolated as if it
+were backquoted, unless it is prefixed with a normal quote. (The
+backquote may also be included explicitly.)
+
+Any other form will result in an error.
+
+This function exists mainly for error-checking and converting
+single-string build commands into list-of-string build commands.
+
+With optional argument PACKAGE, it will be included in any error
+messages."
+  ;; Unquote or eval as needed
+  (when (listp buildprop)
+    (setq buildprop
+          (case (car buildprop)
+            (quote (cdr buildprop))
+            (\` (eval buildprop))
+            ;; No quote, so use backquote implicitly.
+            (otherwise
+             (eval (list '\` buildprop))))))
+  (cond
+   ;; Nil: return it
+   ((null buildprop) nil)
+   ;; Function: just return it
+   ((functionp buildprop)
+    buildprop)
+   ;; List of commands: normalize them
+   ((listp buildprop)
+    (mapcar (lambda (bc) (el-get-normalize-build-command bc package))
+            buildprop))
+   ;; Anything else: invalid
+   (t (el-get-error "Invalid `:build' property%s: %S"
+                    (if package (concat " for package " package) "")
+                    buildprop))))
 
 ;; TODO: Recipe documentation set/get
 

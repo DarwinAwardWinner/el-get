@@ -272,6 +272,14 @@ returning a list that contains it (and only it)."
    (not (cl-find-if-not
          (lambda (elem) (or (null elem)))#'stringp obj))))
 
+(defun el-get-list-of-symbols-p (obj)
+  "Return non-nil if OBJ is a list of only symbols."
+  (and
+   ;; OBJ is list
+   (listp obj)
+   ;; OBJ does not contain non-symbol objects
+   (not (cl-find-if-not #'symbolp obj))))
+
 ;; Property list/hash table interconversion
 (defun el-get-plist-to-hash (plist &rest make-hash-table-args)
   "Convert PLIST to an equivalent hash table.
