@@ -99,7 +99,8 @@ If no file name can be determined from the URL, an error is signaled."
     (case prop
       (:file-name (el-get-file-make-local-name recipe))
       (:website (el-get-recipe-get recipe :url))
-      (:load-path "."))))
+      (:load-path ".")
+      (:autoloads t))))
 
 (provide 'el-get-file-fetcher)
 ;;; el-get-file-fetcher.el ends here

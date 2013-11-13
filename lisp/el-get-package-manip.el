@@ -29,6 +29,7 @@
 (require 'el-get-recipe-manip)
 (require 'el-get-package-internals)
 (require 'el-get-bytecomp)
+(require 'el-get-autoloads)
 
 (defun el-get-remove-package (package)
   "Uninstall PACKAGE.
@@ -92,8 +93,7 @@ did. Possible values are `fetched' or `skipped'."
         (otherwise (el-ger-error "Invalid status: %S" status)))
       (el-get-do-build buildprop package)
       (el-get-byte-compile-package package)
-      ;; Build autoloads
-      ;; TODO!
+      (el-get-generate-package-autoloads package)
       ;; Build info
       ;; TODO!
       )))
