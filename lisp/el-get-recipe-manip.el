@@ -111,26 +111,30 @@ have that name in order to validate."
           ;; Type-independent validation
           (setq errors
                 (el-get-validate-recipe-properties recipe
+                  ;; Required properties
                   `(:name #'el-get-bindable-symbol-p
-                    :name
-                    ,(if expected-name
-                         (lambda (name)
-                           (string= (el-get-as-string expected-name)
-                                    (el-get-as-string name)))
-                       #'identity)
-                    :type #'el-get-bindable-symbol-p
-                    :compile
+                    ;; Multiple predicates are allowed for the same
+                    ;; property.
+                    ,@(when expected-name
+                        (list :name
+                              (lambda (name)
+                                (string= (el-get-as-string expected-name)
+                                         (el-get-as-string name)))))
+                    :type #'el-get-bindable-symbol-p)
+                  ;; Optional properties
+                  `(:compile
                     ,(el-get-combine-predicates #'or
-                       #'null
                        (lambda (val) (memq val '(auto none all)))
                        #'stringp
                        #'el-get-list-of-strings-or-nils-p)
                     :autoloads
                     ,(el-get-combine-predicates #'or
                        #'stringp
-                       (lambda (val) (memq val '(nil t)))
-                       #'el-get-list-of-strings-p))
-                  nil))
+                       (apply-partially 'eq t)
+                       #'el-get-list-of-strings-p)
+                    ;; TODO:
+                    ;; :load :features
+                    )))
           ;; Type-specific validation, only if we passed the above
           (unless errors
             (setq errors
