@@ -112,51 +112,53 @@ have that name in order to validate."
           (setq errors
                 (el-get-validate-recipe-properties recipe
                   ;; Required properties
-                  `(:name #'el-get-bindable-symbol-p
-                    ;; Multiple predicates are allowed for the same
-                    ;; property.
-                    ,@(when expected-name
-                        (list :name
-                              (lambda (name)
-                                (string= (el-get-as-string expected-name)
-                                         (el-get-as-string name)))))
+                  (list
+                   :name
+                   (el-get-combine-predicates #'and
+                     #'el-get-bindable-symbol-p
+                     (if expected-name
+                         (lambda (name)
+                           (string= (el-get-as-string expected-name)
+                                    (el-get-as-string name)))
+                       #'identity))
                     :type #'el-get-bindable-symbol-p)
                   ;; Optional properties
-                  `(:depends
-                    ,(el-get-combine-predicates #'or
-                       #'symbolp
-                       #'el-get-list-of-symbols-p)
-                    :compile
-                    ,(el-get-combine-predicates #'or
-                       (lambda (val) (memq val '(auto none all)))
-                       #'stringp
-                       #'el-get-list-of-strings-or-nils-p)
-                    :autoloads
-                    ,(el-get-combine-predicates #'or
-                       #'stringp
-                       (apply-partially 'eq t)
-                       #'el-get-list-of-strings-p)
-                    :info #'stringp
-                    :load
-                    ,(el-get-combine-predicates #'or
-                       #'stringp
-                       #'el-get-list-of-strings-p)
-                    :features
-                    ,(el-get-combine-predicates #'or
-                       #'symbolp
-                       #'el-get-list-of-symbols-p)
-                    :build
-                    ;; Returns nil if the normalizer throws an error
-                    (lambda (val)
-                      (condition-case nil
-                          (prog1 t
-                            (el-get-normalize-build-property val))
-                        (error nil)))
-                    :website #'stringp
-                    :description #'stringp
-                    :checksum #'stringp
-                    ;; TODO: :pre-init, :post-init, etc.
-                    )))
+                  (list
+                   :depends
+                   (el-get-combine-predicates #'or
+                     #'symbolp
+                     #'el-get-list-of-symbols-p)
+                   :compile
+                   (el-get-combine-predicates #'or
+                     (lambda (val) (memq val '(auto none all)))
+                     #'stringp
+                     #'el-get-list-of-strings-or-nils-p)
+                   :autoloads
+                   (el-get-combine-predicates #'or
+                     #'stringp
+                     (apply-partially 'eq t)
+                     #'el-get-list-of-strings-p)
+                   :info #'stringp
+                   :load
+                   (el-get-combine-predicates #'or
+                     #'stringp
+                     #'el-get-list-of-strings-p)
+                   :features
+                   (el-get-combine-predicates #'or
+                     #'symbolp
+                     #'el-get-list-of-symbols-p)
+                   :build
+                   ;; Returns nil if the normalizer throws an error
+                   (lambda (val)
+                     (condition-case nil
+                         (prog1 t
+                           (el-get-normalize-build-property val))
+                       (error nil)))
+                   :website #'stringp
+                   :description #'stringp
+                   :checksum #'stringp
+                   ;; TODO: :pre-init, :post-init, etc.
+                   )))
           ;; Type-specific validation, only if we passed the above
           (unless errors
             (setq errors
@@ -168,7 +170,8 @@ have that name in order to validate."
       ;; the error list.
       (error (add-to-list
               'errors
-              (format "Encountered a lisp error while validating recipe: %S" err)
+              (format "Encountered a lisp error while validating recipe: %S"
+                      err)
               'append)))
     (when errors
       (if noerror

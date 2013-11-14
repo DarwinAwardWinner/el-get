@@ -94,9 +94,7 @@ did. Possible values are `fetched' or `skipped'."
       (el-get-do-build buildprop package)
       (el-get-byte-compile-package package)
       (el-get-generate-package-autoloads package)
-      ;; Build info
-      ;; TODO!
-      )))
+      (el-get-build-package-info package))))
 
 (provide 'el-get-package-manip)
 ;;; el-get-package-manip.el ends here
