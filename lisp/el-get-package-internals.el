@@ -103,12 +103,10 @@ This file is not guaranteed to exist."
   (case (plist-get plist :status)
     ;; If status is removed (or nil), we don't need a recipe
     (removed
-     (el-get-debug-message "Package is removed")
      t)
     ;; If status is fetched or installed, the `:recipe' property must
     ;; be a valid recipe, and it must not be a virtual recipe.
     ((fetched installed)
-     (el-get-debug-message "Package is fetched or installed")
      (and (el-get-recipe-valid-p (plist-get plist :recipe) package)
           (el-get-fetcher-real-p (plist-get plist :recipe))))
     (otherwise
