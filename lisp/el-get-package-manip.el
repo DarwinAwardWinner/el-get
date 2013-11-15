@@ -29,7 +29,7 @@
 (require 'el-get-recipe-manip)
 (require 'el-get-package-internals)
 (require 'el-get-bytecomp)
-(require 'el-get-autoloads)
+(require 'el-get-autoload-generation)
 
 (defun el-get-remove-package (package)
   "Uninstall PACKAGE.

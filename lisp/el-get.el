@@ -118,6 +118,8 @@
 (require-verbose 'el-get-package-internals)
 (require-verbose 'el-get-package-manip)
 (require-verbose 'el-get-download)
+(require-verbose 'el-get-autoload-generation)
+
 
 (message "Finished loading El-get!")
 
