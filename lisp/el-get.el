@@ -119,7 +119,7 @@
 (require-verbose 'el-get-package-manip)
 (require-verbose 'el-get-download)
 (require-verbose 'el-get-autoload-generation)
-
+(require-verbose 'el-get-info)
 
 (message "Finished loading El-get!")
 

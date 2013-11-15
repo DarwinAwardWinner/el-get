@@ -24,6 +24,7 @@
 
 ;;; Code:
 
+(require 'cl)
 (require 'el-get-internals)
 (require 'el-get-variables)
 (require 'el-get-recipe-manip)
@@ -252,77 +253,6 @@ This always returns a list."
   (el-get-as-list
    (el-get-recipe-get (el-get-package-recipe package t)
                       :load-path)))
-
-(defun el-get-resolve-info-file (package)
-  "Find the info file for PACKAGE.
-
-This exists to normalize the `:info' property of a package's
-recipe so that it points to the info file, not the containing
-directory.
-
-If PACKAGE does not provide an info file"
-  (let* ((recipe (el-get-package-recipe package))
-         (info-prop (el-get-recipe-get recipe :info)))
-    (when info-prop
-      (let ((info-prop-abs
-             (expand-file-name
-              info-prop
-              (el-get-package-install-directory package))))
-        (cond
-              ;; Info property is a directory => find the info file in
-              ;; that directory
-              ((file-directory-p info-prop-abs)
-               (let ((expected-info-file
-                      (format "%s.info" package))
-                     (info-files-in-dir
-                      (directory-files info-prop-abs
-                                       nil "\\.info\\'")))
-                 (cond
-                  ;; Found info file with expected name
-                  ((member expected-info-file
-                          info-files-in-dir)
-                   (expand-file-name expected-info-file
-                                     info-prop-abs))
-                  ;; Found only one info file, but with unexpected
-                  ;; name. Use it with a warning.
-                  ((= (length info-files-in-dir 1))
-                   (expand-file-name (car info-files-in-dir)
-                                     info-prop-abs))
-                  ;; Found multiple info files, and none of them has
-                  ;; the expected name. Warn and return no info.
-                  (t
-                   (el-get-warning-message
-                    "Info dir \"%s\" for package %s contains multiple info files. Please modify the recipe's `:info' property to name one of the following files: %S"
-                    info-prop package
-                    (mapcar (lambda (f) (expand-file-name f info-prop))))
-                   nil))))
-              ;; Info property is a file => use it
-              ((file-exists-p info-prop-abs)
-               info-prop-abs)
-              ;; Info property doesn't point to an existing file or
-              ;; directory => error.
-              (t
-               (el-get-error
-                "Info property \"%s\" for package %s points to a nonexistent path."
-                info-prop package)))))))
-
-(defun el-get-build-package-info (package)
-  "Build info dir for PACKAGE.
-
-If PACKAGE's recipe has no `:info' property, this does nothing."
-  (when (el-get-recipe-get (el-get-package-recipe package) :info)
-    (let* ((info-file (el-get-resolve-info-file package))
-           ;; This is a file with the name "dir" in the same directory
-           ;; as the info file.
-           (info-dir-file
-            (expand-file-name
-             "dir" (file-name-directory info-file))))
-      ;; TODO: Customizable path to install-info
-      (if (executable-find "install-info")
-          (call-process "install-info" nil nil nil info-file info-dir-file)
-        (el-get-warning-message
-         "Not building info for package %s because `install-info' is not in your $PATH"
-         package)))))
 
 (provide 'el-get-package-internals)
 ;;; el-get-package-internals.el ends here

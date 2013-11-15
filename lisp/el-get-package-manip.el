@@ -30,6 +30,7 @@
 (require 'el-get-package-internals)
 (require 'el-get-bytecomp)
 (require 'el-get-autoload-generation)
+(require 'el-get-info)
 
 (defun el-get-remove-package (package)
   "Uninstall PACKAGE.
