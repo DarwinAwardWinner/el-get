@@ -225,7 +225,7 @@ FILENAME to be released."
            (progn
              (el-get-acquire-file-lock ,@arglist)
              ,@body)
-         (el-get-release-file-lock ,filename)))))
+         (el-get-release-file-lock ,filename t)))))
 
 (provide 'el-get-lock)
 ;;; el-get-lock.el ends here

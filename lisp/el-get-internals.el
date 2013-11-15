@@ -170,10 +170,12 @@ on the stack will be used."
   "Return stack frame for the most recent call to an el-get function."
   (loop for stackframe in
         (cdr (el-get-backtrace-from (or start 'el-get-caller-frame)))
-        if (ignore-errors
-             (string-prefix-p "el-get"
-                              (symbol-name (cadr stackframe))))
-        return stackframe))
+        if (and
+            (car stackframe)
+            (ignore-errors
+              (string-prefix-p "el-get"
+                               (symbol-name (cadr stackframe)))))
+        return (cdr stackframe)))
 
 (defun el-get-debug-message (format-string &rest args)
   "Record a debug message related to el-get."
