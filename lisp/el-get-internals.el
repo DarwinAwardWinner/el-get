@@ -803,12 +803,19 @@ search in subdirectories."
   (with-temp-buffer
     (insert-file-contents file)
     (goto-char (point-min))
-    (condition-case err
-        (while (read (current-buffer)))
-      ;; End of file means that everything parsed
-      (end-of-file t)
-      ;; Any other error means that something failed to parse
-      (error nil))))
+    (and
+     ;; Ensure we don't have HTTP garbage in the file
+     (not (string-prefix-p "HTTP/" (buffer-string)))
+     (not (el-get-string-suffix-p
+           "- Peer has closed the GnuTLS connection\n"
+           (buffer-string)))
+     ;; Check that we can parse each form in the file
+     (condition-case err
+         (while (read (current-buffer)))
+       ;; End of file means that everything parsed
+       (end-of-file t)
+       ;; Any other error means that something failed to parse
+       (error nil)))))
 
 (provide 'el-get-internals)
 ;;; el-get-internals.el ends here
