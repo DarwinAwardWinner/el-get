@@ -34,9 +34,64 @@
 (defconst el-get-emacs (concat invocation-directory invocation-name)
   "Path to find the currently running emacs.")
 
-(defconst el-get-async-vars-to-export
-  '(loa))
+(defconst el-get-async-always-export-varlist
+  ;; These variables are always exported unconditionally and
+           ;; override any user-provided values because they are
+           ;; required for el-get subprocesses to work correctly.
+  (list '(el-get-in-subprocess . t)
+        'el-get-host-timestamp-directory
+        'el-get-download-default-wait
+        'el-get-download-wait-alist))
 
+(defun el-get-async-var-exportable-p (varname)
+  "Return non-nil if VARNAME is allowed to be exported by the user."
+  (and (el-get-bindable-symbol-p varname)
+       (loop for varspec in el-get-async-always-export-varlist
+             for exported-var = (or (car-safe varspec) varspec)
+             if (eq exported-var varname)
+             return nil
+             finally return t)))
+
+(define-widget 'el-get-async-exportable-symbol 'symbol
+  "Like `symbol', but must pass `el-get-async-var-exportable-p'."
+  :validate
+  (lambda (widget)
+    (let ((sym (widget-value widget)))
+      (unless (el-get-async-var-exportable-p sym)
+        (widget-put
+         widget
+         :error (format "`%s' is not a user-exportable variable" sym))
+        widget))))
+
+(defcustom el-get-async-export-varlist nil
+  "List of variable names to export to all el-get-subprocesses.
+
+This is a list with the same format as the `:export-variables'
+keyword argument to `el-get-async-start'. All variables are
+allowed except for the ones listed in
+`el-get-async-always-export-varlist', since el-get already
+exports them with specific values that the user may not
+override. Also, constants such as nil, t, and keywords are not
+exportable.
+
+Note that any values specified here will be overridden by the
+EXPORT-VARIABLES argument to `el-get-async-start'.
+
+This is intended to allow exporting of critical variables that
+are required for proper operation, such as proxy settings."
+  :group 'el-get
+  :type
+  '(repeat
+    (choice
+     (el-get-async-exportable-symbol
+      :tag "Export variable with parent's value")
+     (cons
+      :tag "Export variable with specified value"
+      (el-get-async-exportable-symbol :tag "Variable")
+      (sexp :tag "Value")))))
+
+;; TODO: Add a setup hook that allows the user to execute arbitrary
+;; setup code before EXPR
 (defun* el-get-async-start
     (expr &key
           finish-func
@@ -82,14 +137,9 @@ The following keyword arguments are available:
   evaluating EXPR."
   (let* ((export-variables
           (append
+           el-get-async-export-varlist
            export-variables
-           ;; These variables are always exported unconditionally and
-           ;; override any user-provided values because they are
-           ;; required for el-get subprocesses to work correctly.
-           (list '(el-get-in-subprocess . t)
-                 'el-get-host-timestamp-directory
-                 'el-get-download-default-wait
-                 'el-get-download-wait-alist)))
+           el-get-async-always-export-varlist))
          (export-variables-setq-list
           (loop
            for item in export-variables
@@ -109,7 +159,18 @@ The following keyword arguments are available:
            do (error "Value of variable %s is not printable: %S"
                      (car item) (cdr item))
            ;; Collect as one big list, the arg list to `setq'
-           nconc (list (car item) (cdr item))))
+           collect (car item)
+           collect (cdr item)))
+         ;; If EXPR is actually a function, convert it to an
+         ;; expression that calls the function.
+         (expr
+          (if (functionp expr)
+              (prog1 (list #'funcall expr)
+                ;; Also, if EXPR is a symbol that names a function,
+                ;; then make sure we load the file that defines it.
+                (when (and (symbolp expr) (symbol-file expr))
+                  (add-to-list 'load-files (symbol-file expr)))
+            expr)))
          (full-lambda
           `(lambda ()
              ;; Set load path before loading things
