@@ -7,5 +7,6 @@ if [ -n "$1" ]; then
     CMD="$CMD -l $1"
 fi
 
-mkdir -p tmp
+rm -rvf `pwd`/tmp
+mkdir -vp `pwd`/tmp
 HOME=`pwd`/tmp $CMD
