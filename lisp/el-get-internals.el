@@ -798,5 +798,17 @@ search in subdirectories."
    ((file-exists-p path)
     (list path))))
 
+(defun el-get-valid-lisp-file-p (file)
+  "Return non-nil if FILE's contents parse as Elisp."
+  (with-temp-buffer
+    (insert-file-contents file)
+    (goto-char (point-min))
+    (condition-case err
+        (while (read (current-buffer)))
+      ;; End of file means that everything parsed
+      (end-of-file t)
+      ;; Any other error means that something failed to parse
+      (error nil))))
+
 (provide 'el-get-internals)
 ;;; el-get-internals.el ends here

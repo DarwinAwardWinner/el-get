@@ -81,7 +81,8 @@ If no file name can be determined from the URL, an error is signaled."
    (expand-file-name (el-get-recipe-get recipe :file-name)
                      destdir)
    ;; TODO Make this number a preference
-   3)
+   3
+   #'el-get-valid-lisp-file-p)
   ;; TODO check the checksum immediately after fetching  and abort on
   ;; mismatch
   )

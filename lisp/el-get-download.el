@@ -125,7 +125,7 @@ stamp, return nil."
       (float-time)))
     (el-get-write-file filename)))
 
-(defun el-get-download-file (url newname &optional num-attempts)
+(defun el-get-download-file (url newname &optional num-attempts predicate)
   "Download URL to NEWNAME synchronously.
 
 This function attempts to prevent multiple simultaneous downloads
@@ -138,8 +138,9 @@ With optional argument NUM-ATTEMPTS, if the download fails, it
 will be attempted up to that many times before giving up. If
 NUM-ATTEMPTS is provided, it must be a natural number.
 
-The return value is that of the last call to `url-copy-file',
-successful or not."
+With optional arg PREDICATE, a download is only considered
+successful if PREDICATE returns non-nil when called on the
+downloaded file."
   ;; Not our job to create the directory, and we don't want to do all
   ;; the work below if it doesn't exist.
   (unless (file-directory-p (file-name-directory newname))
@@ -157,39 +158,64 @@ successful or not."
         ;; Make sure num-attempts has a sane value
         (setq num-attempts (max (floor (or num-attempts 1)) 1))
         (unwind-protect
-            (loop with remaining-attempts = num-attempts
-                  while (> remaining-attempts 1)
-                  for attempt-num = (1+ (- num-attempts remaining-attempts))
-                  do (el-get-debug-message
-                      "Attempt #%s to download %s to %s"
-                      attempt-num url newname)
+            (loop with success = nil
+                  for attempt-num upfrom 1
+                  for remaining-attempts = (- num-attempts attempt-num)
+                  while (< attempt-num num-attempts)
                   ;; Try to fetch
-                  for result =
-                  (condition-case err
-                      (url-copy-file url newname 'overwrite)
-                    ;; TODO: Figure out which error types indicate a
-                    ;; persistent failure for which we should cancel
-                    ;; all retries.
-                    (error
-                     (el-get-debug-message
-                      "Error during attempt #%s to download %s to %s: %S"
-                      attempt-num url newname err)))
-                  if result return result
+                  do (condition-case err
+                         (progn
+                           (el-get-debug-message
+                            "Attempt #%s to download %s to %s"
+                            attempt-num url newname)
+                           (url-copy-file url newname 'overwrite)
+                           (setq success t))
+                       ;; TODO: Figure out which error types indicate a
+                       ;; persistent failure for which we should cancel
+                       ;; all retries.
+                       (error
+                        (el-get-debug-message
+                         "Error during attempt #%s to download %s to %s: %S"
+                         attempt-num url newname err)
+                        (setq success nil)))
+                  if (and success predicate)
+                  do (setq
+                      success
+                      (if (funcall predicate newname)
+                          (prog1 t
+                            (el-get-debug-message
+                             "Predicate %s passed on file %s downloaded from URL %S."
+                             predicate newname url))
+                        (prog1 nil
+                          (el-get-debug-message
+                           "Predicate %s failed on file %s downloaded from URL %S."
+                           predicate newname url)
+                          (delete-file newname))))
+                  if success return success
+                  else do
+                  (el-get-debug-message
+                   "Failed attempt #%s to download %s to %s. Trying again %s times"
+                   attempt-num url newname remaining-attempts)
                   ;; Sleep between attempts too
                   do (sleep-for wait-time)
-                  do (decf remaining-attempts)
                   ;; Final attempt: throws the error for real if it
                   ;; fails.
                   finally return
                   (progn
-                    (el-get-debug-message "Final attempt to download %s to %s"
-                                          url newname)
-                    (url-copy-file url newname 'overwrite)))
-          ;; Write the timestamp file whether we succeed or fail, so
-          ;; other processes know how long to wait.
-          (el-get-write-timestamp-file
-           timestamp-file
-           (+ (float-time) wait-time)))))))
+                    (el-get-debug-message
+                     "Final attempt #%s to download %s to %s."
+                     num-attempts url newname)
+                    (url-copy-file url newname 'overwrite)
+                    (when predicate
+                      (unless (funcall predicate newname)
+                        (el-get-error
+                         "Predicate %s failed on file %s downloaded from URL %S."
+                         predicate newname url))))))
+        ;; Write the timestamp file whether we succeed or fail, so
+        ;; other processes know how long to wait.
+        (el-get-write-timestamp-file
+         timestamp-file
+         (+ (float-time) wait-time))))))
 
 (provide 'el-get-download)
 ;;; el-get-download.el ends here
