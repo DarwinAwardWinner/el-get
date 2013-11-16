@@ -361,9 +361,11 @@ A recipe's `:build' property can be any one of the following:
   strings or a single string. The list-of-strings form is
   preferred because it will avoid shell interpolation.
 
-In either case, BUILDPROP will be comma-interpolated as if it
-were backquoted, unless it is prefixed with a normal quote. (The
-backquote may also be included explicitly.)
+In either case, BUILDPROP is implicitly backquoted, so any forms
+within it that are prefixed with a comma will be evaluated and
+replaced with the result. (The backquote may also be included
+explicitly.) To suppress this behavior, BUILDPROP my be
+explicitly quoted with a standard quote.
 
 Any other form will result in an error.
 
@@ -371,7 +373,8 @@ This function exists mainly for error-checking and converting
 single-string build commands into list-of-string build commands.
 
 With optional argument PACKAGE, it will be included in any error
-messages."
+messages to make them more informative (but this argument has no
+other effect)."
   ;; Unquote or eval as needed
   (when (listp buildprop)
     (setq buildprop

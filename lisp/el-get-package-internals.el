@@ -163,7 +163,7 @@ PLIST is validated before attempting to write it."
     (setq el-get-package-status-cache
           (cons package plist))))
 
-(defun el-get-package-status (package)
+(defsubst el-get-package-status (package)
   "Return the status of PACKAGE.
 
 The return value is an element of `el-get-package-statuses'. Note
