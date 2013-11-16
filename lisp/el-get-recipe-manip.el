@@ -311,8 +311,9 @@ automatically generated recipe properties are also included."
   "Normalize a build command CMD.
 
 If CMD is a list of strings, return it. If it is a string, return
-a list of strings representing the same command. For any other
-value, an error is returned.
+a list of strings representing the same command (i.e. something
+like `(list \"sh\" \"-c\" CMD)'). For any other value, an error
+is returned.
 
 For a CMD that is a string, a warning is issued if it contains
 any characters with special meaning to the shell (including
@@ -351,7 +352,7 @@ or warning messages."
 (defun el-get-normalize-build-property (buildprop &optional package)
   "Properly normalize a `:build' property of a recipe.
 
-A recipe's `:build' property can be any one of the following:
+A recipe's `:build' property can be either:
 
 * A zero-argument function, which will be called with
   `default-directory' set to the directory in which the package
@@ -379,10 +380,14 @@ other effect)."
   (when (listp buildprop)
     (setq buildprop
           (case (car buildprop)
-            (quote (cdr buildprop))
-            (\` (eval buildprop))
+            ;; Explicitly quoted or backquoted
+            ((quote function \`) (eval buildprop))
             ;; No quote, so use backquote implicitly.
             (otherwise
+             (el-get-debug-message
+              "Implicitly backquoting build property%s: %S"
+              (if package (concat " for package " package) "")
+              buildprop)
              (eval (list '\` buildprop))))))
   (cond
    ;; Nil: return it
