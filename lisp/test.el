@@ -125,6 +125,13 @@
 (el-get-fetch-package (el-get-read-recipe 'ack))
 (el-get-build-package 'ack)
 
+;; Init ack and see if we can actually use the autoloads
+(el-get-init-package 'ack)
+(show-value (symbol-function 'ack))
+(save-window-excursion
+  (save-excursion
+    (ack "hello")))
+
 (el-get-fetch-package '(:name osx-pseudo-daemon
                               :type file
                               :url

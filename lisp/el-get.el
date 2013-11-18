@@ -120,6 +120,7 @@
 (require-verbose 'el-get-download)
 (require-verbose 'el-get-autoload-generation)
 (require-verbose 'el-get-info)
+(require-verbose 'el-get-init)
 
 (message "Finished loading El-get!")
 
