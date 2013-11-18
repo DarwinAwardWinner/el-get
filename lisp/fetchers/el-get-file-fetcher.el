@@ -47,7 +47,8 @@ URL can be either a string or a url struct (see url-parse.el)."
 
 (defun el-get-elisp-filename-p (fname)
   "Return non-nil if FNAME could be the name of an elisp file."
-  (el-get-string-suffix-p ".el" fname))
+  (and (stringp fname)
+       (el-get-string-suffix-p ".el" fname)))
 
 (defun el-get-file-validate-recipe (recipe)
   ;; A file recipe just has to have a `:url' property that looks like
@@ -83,6 +84,12 @@ If no file name can be determined from the URL, an error is signaled."
    ;; TODO Make this number a preference
    3
    #'el-get-valid-lisp-file-p)
+  ;; TODO verify that any `provide' statements in the file are
+  ;; consistent with the file name
+
+  ;; TODO Verify that file name is consistent with `:load' or
+  ;; `:features' properties in recipe.
+
   ;; TODO check the checksum immediately after fetching  and abort on
   ;; mismatch
   )
@@ -101,6 +108,7 @@ If no file name can be determined from the URL, an error is signaled."
       (:file-name (el-get-file-make-local-name recipe))
       (:website (el-get-recipe-get recipe :url))
       (:load-path ".")
+      (:load (el-get-recipe-get recipe :file-name))
       (:autoloads t))))
 
 (provide 'el-get-file-fetcher)

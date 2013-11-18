@@ -174,6 +174,7 @@ status."
   (or (plist-get (el-get-status-plist package) :status)
       'removed))
 
+;; TODO Update all calls to use the second argument if needed
 (defun el-get-package-recipe (package &optional must-exist)
   "Return the recipe used to fetch/install PACKAGE.
 
@@ -265,6 +266,14 @@ on fetched or installed packages."
         (el-get-recipe-dependencies recipe)
       (el-get-error "Package recipe not available for %s" package))))
 
+(defun el-get-package-after-load-target (package)
+  "Returns the file or feature against which to register `:after-load'."
+  (let ((target (el-get-recipe-after-load-target
+                 (el-get-package-recipe package))))
+    (if (symbolp target)
+        target
+      (expand-file-name target
+                        (el-get-package-install-directory package)))))
 
 (provide 'el-get-package-internals)
 ;;; el-get-package-internals.el ends here

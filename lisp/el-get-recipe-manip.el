@@ -161,8 +161,14 @@ have that name in order to validate."
                    :website #'stringp
                    :description #'stringp
                    :checksum #'stringp
-                   ;; TODO: :pre-init, :post-init, etc.
                    )))
+          ;; If we have an `:after-load', we need a target to register
+          ;; against.
+          (when (el-get-recipe-get recipe :after-load)
+            (unless (el-get-recipe-after-load-target recipe)
+              (add-to-list 'errors "Recipe has an `:after-load'
+              property but no `:features' or `:load' property to
+              register against.")))
           ;; Type-specific validation, only if we passed the above
           (unless errors
             (setq errors
@@ -408,6 +414,32 @@ other effect)."
                     (if package (concat " for package " package) "")
                     buildprop))))
 
+(defsubst el-get-normalize-recipe-init-form (form &optional package)
+  "Normalize `:init', `:after-init', or `:after-load' properties.
+
+If FORM is a function, return `(cons #'funcall form)'. Otherwise
+return FORM unchanged. This effectively disallows functions that
+take arguments, and replaces zero-argument functions with their
+bodies. Also, if FORM is a function, a warning is raised to
+advise to convert it to a bare form.
+
+Optional second arg PACKAGE is used to make the warning message
+more informative."
+  (if (functionp form)
+      (prog1 `(funcall ,form)
+        (el-get-warning-message
+              "Init form%s is a function; replace it with a `progn' form: %S"
+              (if package (concat " for package " package) "")
+              form))
+    form))
+
+(defun el-get-recipe-after-load-target (recipe)
+  "Returns the target against which to register `:after-load'.
+
+Note that if this returns a string, it is a file path relative to
+the package install directory, and should be expanded to an
+absolute path before use."
+  )
 ;; TODO: Recipe documentation set/get
 
 (provide 'el-get-recipe-manip)
