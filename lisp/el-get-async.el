@@ -36,12 +36,14 @@
 
 (defconst el-get-async-always-export-varlist
   ;; These variables are always exported unconditionally and
-           ;; override any user-provided values because they are
-           ;; required for el-get subprocesses to work correctly.
+  ;; override any user-provided values because they are
+  ;; required for el-get subprocesses to work correctly.
   (list '(el-get-in-subprocess . t)
         'el-get-host-timestamp-directory
         'el-get-download-default-wait
-        'el-get-download-wait-alist))
+        'el-get-download-wait-alist
+        'warning-minimum-level
+        'warning-minimum-log-level))
 
 (defun el-get-async-var-exportable-p (varname)
   "Return non-nil if VARNAME is allowed to be exported by the user."
