@@ -110,7 +110,9 @@ This file is not guaranteed to exist."
     ;; be a valid recipe, and it must not be a virtual recipe.
     ((fetched installed)
      (and (el-get-recipe-valid-p (plist-get plist :recipe) package)
-          (el-get-fetcher-real-p (plist-get plist :recipe))))
+          (el-get-fetcher-real-p (plist-get plist :recipe))
+          ;; Return t for true instead of whatever the above returns
+          t))
     (otherwise
      (el-get-debug-message "Invalid status %s: %S"
                            (plist-get plist :status) plist)
