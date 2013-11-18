@@ -103,12 +103,12 @@ is a predicate for the provided value to satisfy.")
 
 TODO link to docs")
 
-(defsubst el-get-get-fetcher (type)
-  "Retrive full fetcher definition for TYPE.
+(defsubst el-get-get-fetcher (fetcher)
+  "Retrive full fetcher definition for FETCHER.
 
 Throws an error if the requested fetcher does not exist."
-  (or (gethash type el-get-fetchers)
-      (el-get-error "Fetcher type %s not registered" type)))
+  (or (gethash fetcher el-get-fetchers)
+      (el-get-error "Fetcher %s not registered" fetcher)))
 
 (defun el-get-set-fetcher (type def)
   "Set fetcher definition for TYPE to DEF.
@@ -131,55 +131,60 @@ validate."
     (setq def (el-get-plist-to-hash def)))
   (puthash type def el-get-fetchers))
 
-(defun el-get-fetcher-prop (type operation)
-  "Return the OPERATION function for fetcher type TYPE.
+(defun el-get-fetcher-prop (fetcher prop)
+  "Return the PROP property for fetcher type TYPE.
 
 TYPE may either be the name of a fetcher type, the definition of
-one, or a recipe, whose type property will be used. If the
-operation is not defined for the given type, this returns nil. If
-the given type is not a recognized recipe type, throws an
-error. TODO"
+one, or a recipe, whose `:type' property will be used to
+determine the fetcher type. If the TYPE does not contain PROP,
+this returns nil. If TYPE is not a recognized fetcher type, this
+throws an error."
   ;; Multipe dispatch via recursion
   (cond
-   ;; String naming an operation
-   ((stringp operation)
-    (el-get-warning-message "String used instead of symbol to name an operation")
-    (el-get-fetcher-prop type (intern operation)))
+   ;; String naming a property
+   ((stringp prop)
+    (el-get-warning-message
+     "String used instead of symbol to name a fetcher property: \"%s\""
+     prop)
+    (el-get-fetcher-prop fetcher (intern prop)))
    ;; Hash table = Fetcher definition
-   ((hash-table-p type)
-    (gethash operation type))
+   ((hash-table-p fetcher)
+    (gethash prop fetcher))
    ;; Symbol naming a fetcher
-   ((symbolp type)
-    (el-get-fetcher-prop (el-get-get-fetcher type) operation))
+   ((symbolp fetcher)
+    (el-get-fetcher-prop (el-get-get-fetcher fetcher) prop))
    ;; String naming a fetcher
-   ((stringp type)
-    (el-get-warning-message "String used instead of symbol to name a type")
-    (el-get-fetcher-prop (intern type) operation))
+   ((stringp fetcher)
+    (el-get-warning-message
+     "String used instead of symbol to name a fetcher type: \"%s\""
+     fetcher)
+    (el-get-fetcher-prop (intern fetcher) prop))
    ;; List = Recipe definition
-   ((listp type)
-    (el-get-fetcher-prop (el-get-recipe-type type) operation))
+   ((listp fetcher)
+    (el-get-fetcher-prop (el-get-recipe-type fetcher) prop))
    ;; Unrecognized fetcher type
-   ((null type)
+   ((null fetcher)
     (el-get-error "Unrecognized fetcher type"))))
 
-(defsubst el-get-fetcher-real-p (type)
-  "Returns t if TYPE is a real fetcher type.
+(defsubst el-get-fetcher-registered-p (fetcher)
+  "Returns t if FETCHER is a registered fetcher."
+  (gethash fetcher el-get-fetchers))
 
-TYPE may either be a symbol naming a fetcher type or a hash table
-that defines a fetcher type."
-  (el-get-fetcher-prop type :fetch))
+(defsubst el-get-fetcher-real-p (fetcher)
+  "Returns t if FETCHER is a real fetcher.
 
-(defsubst el-get-fetcher-virtual-p (type)
-  "Returns t if TYPE is a virtual fetcher type.
+FETCHER may either be a symbol naming a fetcher or a hash table
+that defines a fetcher."
+  (and (el-get-fetcher-registered-p fetcher)
+       (el-get-fetcher-prop fetcher :fetch)))
 
-TYPE may either be a symbol naming a fetcher type or a hash table
-that defines a fetcher type."
-  (el-get-fetcher-prop type :filter))
+(defsubst el-get-fetcher-virtual-p (fetcher)
+  "Returns t if FETCHER is a virtual fetcher.
 
-(defsubst el-get-fetcher-registered-p (type)
-  "Returns t if TYPE is a registered fetcher type."
-  (or (el-get-fetcher-real-p type)
-      (el-get-fetcher-virtual-p type)))
+FETCHER may either be a symbol naming a fetcher or a hash table
+that defines a fetcher."
+  (and (el-get-fetcher-registered-p fetcher)
+       (el-get-fetcher-prop fetcher :filter)))
 
 ;; TODO: add a DOC argument and make it available via
 ;; `el-get-describe-package-type' or similar function.
