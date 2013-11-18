@@ -176,16 +176,14 @@ throws an error."
 
 FETCHER may either be a symbol naming a fetcher or a hash table
 that defines a fetcher."
-  (and (el-get-fetcher-registered-p fetcher)
-       (el-get-fetcher-prop fetcher :fetch)))
+  (ignore-errors (el-get-fetcher-prop fetcher :fetch)))
 
 (defsubst el-get-fetcher-virtual-p (fetcher)
   "Returns t if FETCHER is a virtual fetcher.
 
 FETCHER may either be a symbol naming a fetcher or a hash table
 that defines a fetcher."
-  (and (el-get-fetcher-registered-p fetcher)
-       (el-get-fetcher-prop fetcher :filter)))
+  (ignore-errors (el-get-fetcher-prop fetcher :filter)))
 
 ;; TODO: add a DOC argument and make it available via
 ;; `el-get-describe-package-type' or similar function.
