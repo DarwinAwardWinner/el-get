@@ -817,5 +817,12 @@ search in subdirectories."
        ;; Any other error means that something failed to parse
        (error nil)))))
 
+(defsubst el-get-same-files (path1 path2)
+  "Return non-nil if PATH1 and PATH2 point to the same file.
+
+This uses `file-truname' to resolve symlinks."
+  (string= (file-truname path1)
+           (file-truname path2)))
+
 (provide 'el-get-internals)
 ;;; el-get-internals.el ends here

@@ -30,9 +30,9 @@
 
 (defsubst el-get-package-autoload-file (package)
   "Return the path to the autoload file for PACKAGE."
-  (el-get-expand-package-file-name
+  (expand-file-name
    (format "%s-autoloads.el" package)
-   package))
+   (el-get-package-install-directory package)))
 
 (defun el-get-check-autoload-file-has-content (&optional file)
   "Check that FILE has \"content\".
@@ -42,23 +42,25 @@
   (setq file
         (or file generated-autoload-file
             (el-get-error "No FILE argument provided and `generated-autoload-file' is not set.")))
-  (el-get-with-file-lock file
-    ;; It's not an error if there is a buffer with pending changes to
-    ;; FILE, but it is highly suspect.
-    (when (find-buffer-visiting file #'buffer-modified-p)
-      (el-get-warning-message
-       "A buffer is currently visiting file %s: %s"
-       file (buffer-file-name
-             (find-buffer-visiting file #'buffer-modified-p))))
-    (with-temp-buffer
-      (insert-file-contents file)
-      (goto-char (point-min))
-      (condition-case err
-          (loop for form = (read (current-buffer))
-                unless (eq (car form) 'provide)
-                return t)
-        ;; If we hit the end of the file, there is no content.
-        (end-of-file nil)))))
+  (and
+   (file-exists-p file)
+   (el-get-with-file-lock file
+     ;; It's not an error if there is a buffer with pending changes to
+     ;; FILE, but it is highly suspect.
+     (when (find-buffer-visiting file #'buffer-modified-p)
+       (el-get-warning-message
+        "A buffer is currently visiting file %s: %s"
+        file (buffer-file-name
+              (find-buffer-visiting file #'buffer-modified-p))))
+     (with-temp-buffer
+       (insert-file-contents file)
+       (goto-char (point-min))
+       (condition-case err
+           (loop for form = (read (current-buffer))
+                 unless (eq (car form) 'provide)
+                 return t)
+         ;; If we hit the end of the file, there is no content.
+         (end-of-file nil))))))
 
 (defun el-get-cat-files-into-autoload-file (package files)
   "Concatenate FILES into PACKAGE's autoload file.
@@ -133,7 +135,8 @@ not."
     (let* ((recipe (el-get-package-recipe package t))
            (install-dir (el-get-package-install-directory package))
            (autoload-prop (el-get-recipe-get recipe :autoloads))
-           (lpath-prop (el-get-package-load-path package)))
+           (lpath-prop (el-get-package-load-path package))
+           (pkg-autoload-file (el-get-package-autoload-file package)))
       (cond
        ;; `:autoloads nil' => Don't generate anything
        ((null autoload-prop)
@@ -145,8 +148,11 @@ not."
        ((eq autoload-prop t)
         (el-get-debug-message "Generating autoloads for package %s"
                               package)
-        (let ((generated-autoload-file
-               (el-get-package-autoload-file package)))
+        (when (file-exists-p pkg-autoload-file)
+          (el-get-warning-message
+           "Overwriting pre-built package-autoload file for %s: %S"
+           package (file-relative-name pkg-autoload-file install-dir)))
+        (let ((generated-autoload-file pkg-autoload-file))
           (apply
            #'update-directory-autoloads
            (loop for dir in lpath-prop
@@ -159,14 +165,19 @@ not."
              package)
             (delete-file generated-autoload-file)
             nil)))
-       ;; `:autoloads STRING' => STRING names a pre-built package
-       ;; autoload file; copy or symlink.
+       ;; `:autoloads STRING' => STRING names a pre-built autoload
+       ;; file; copy or symlink.
        ((stringp autoload-prop)
         (el-get-debug-message "Using pre-built autoload file for package %s: %s"
                               package autoload-prop)
-        (el-get-link-or-copy
+        ;; TODO cleanup
+        (if (el-get-same-files
+             (expand-file-name autoload-prop install-dir)
+             pkg-autoload-file)
+            (el-get-debug-message "Pre-built autoload file already has desired name.")
+          (el-get-link-or-copy
          (expand-file-name autoload-prop install-dir)
-         (el-get-package-autoload-file package))
+         pkg-autoload-file))
         t)
        ;; `:autoloads (STRING STRING ...)' => Multiple pre-built
        ;; autoload files; Concatenate them into autoload file.
@@ -174,6 +185,11 @@ not."
         (el-get-debug-message
          "Collecing pre-built autoload files for package %s: %S"
          package autoload-prop)
+        (when (file-exists-p pkg-autoload-file)
+          (el-get-warning-message
+           "Overwriting pre-built package-autoload file for %s: %S"
+           package (file-relative-name pkg-autoload-file install-dir)))
+        ;; TODO Check for autoloads file in autoload-prop
         (el-get-cat-files-into-autoload-file package autoload-prop)
         t)
        (t (el-get-error "Unrecognized :autoloads property: %S"
