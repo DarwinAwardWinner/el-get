@@ -124,6 +124,10 @@
 
 (el-get-fetch-package (el-get-read-recipe 'ack))
 (el-get-build-package 'ack)
+(assert (file-exists-p
+         (expand-file-name
+          "ack.elc"
+          (el-get-package-install-directory 'ack))))
 
 ;; Init ack and see if we can actually use the autoloads
 (el-get-init-package 'ack)
