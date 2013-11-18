@@ -131,7 +131,7 @@ PACKAGE's load-path will be compiled.
   (let ((bytecomp-files (el-get-assemble-files-for-byte-compilation package)))
     (if bytecomp-files
         (progn
-          (el-get-debug-message "Byte-compileing files for package %s: %S"
+          (el-get-debug-message "Byte-compiling files for package %s: %S"
                                 package bytecomp-files)
           (el-get-byte-compile-files bytecomp-files))
       (el-get-debug-message "Nothing to byte-compile for package %s."
