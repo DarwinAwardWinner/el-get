@@ -387,7 +387,7 @@ With optional argument PACKAGE, it will be included in any error
 messages to make them more informative (but this argument has no
 other effect)."
   ;; Unquote or eval as needed
-  (when (listp buildprop)
+  (when (consp buildprop)
     (setq buildprop
           (case (car buildprop)
             ;; Explicitly quoted or backquoted
