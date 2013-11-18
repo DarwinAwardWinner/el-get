@@ -66,9 +66,9 @@ not-yet-installed pacakges, you could use
          (dephash
           (el-get-make-lookup-table recipes
             :key-func #'el-get-recipe-name
-            :value-func #'el-get-package-dependencies))
+            :value-func #'el-get-recipe-dependencies))
          (remaining-deps
-          (mapcan #'el-get-package-dependencies recipes)))
+          (mapcan #'el-get-recipe-dependencies recipes)))
     (el-get-debug-message "Overrides: %S"
                           (el-get-hash-to-plist overrides))
     (el-get-debug-message "Resolved recipes: %S" recipes)
@@ -84,7 +84,7 @@ not-yet-installed pacakges, you could use
                      (el-get-resolve-recipe next-pkg
                                             :overrides overrides))
                     (next-recipe-deps
-                     (el-get-package-dependencies next-recipe)))
+                     (el-get-recipe-dependencies next-recipe)))
                (puthash next-pkg
                         next-recipe-deps
                         dephash)
