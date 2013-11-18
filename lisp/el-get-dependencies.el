@@ -28,13 +28,15 @@
 (require 'el-get-recipe-manip)
 (require 'el-get-recipe-io)
 
-(defun el-get-package-dependencies (recipe)
+(defun el-get-recipe-dependencies (recipe)
   "Return direct dependencies of RECIPE, a package definition."
   ;; TODO clarify via documentation and argnames which functions take
   ;; only full recipe definitions and which take whatever.
-  (append (el-get-as-list (el-get-recipe-get recipe :depends))
-          ;; TODO: make sure fetchers implement this
-          (el-get-as-list (el-get-recipe-get recipe :auto-depends))))
+  (append (el-get-recipe-get-list recipe :depends))
+          ;; TODO: make sure fetchers implement these as necessary
+          (el-get-recipe-get-list recipe :auto-depends)
+          ;; TODO implement this for e.g. elpa type
+          (el-get-fetcher-prop recipe :fetcher-depends))
 
 (defun* el-get-dependency-graph (recipes &key (overrides nil) (skip-p #'ignore))
   "Return the dependency graph of RECIPES.

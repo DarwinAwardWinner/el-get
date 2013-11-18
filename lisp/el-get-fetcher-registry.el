@@ -46,7 +46,8 @@ that the property must *not* be provided.)")
         :compute-checksum #'functionp
         :auto-property #'functionp
         :validate #'functionp
-        :documentation #'stringp)
+        :documentation #'stringp
+        :fetcher-depends #'el-get-list-of-symbols-p)
   "Plist of optional fetcher properties.
 
 Each property in this list is a property that may be provided to
