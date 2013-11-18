@@ -28,6 +28,7 @@
 (require 'el-get-internals)
 (require 'el-get-variables)
 (require 'el-get-recipe-manip)
+(require 'el-get-dependencies)
 
 (defconst el-get-package-statuses
   '(removed installed fetched)
@@ -253,6 +254,16 @@ This always returns a list."
   (el-get-as-list
    (el-get-recipe-get (el-get-package-recipe package t)
                       :load-path)))
+(defun el-get-package-dependencies (package)
+  "Return dependencies for PACKAGE.
+
+These are read from PACKAGE's status recipe, so this only works
+on fetched or installed packages."
+  (let ((recipe (el-get-package-recipe package)))
+    (if recipe
+        (el-get-recipe-dependencies recipe)
+      (el-get-error "Package recipe not available for %s" package))))
+
 
 (provide 'el-get-package-internals)
 ;;; el-get-package-internals.el ends here
