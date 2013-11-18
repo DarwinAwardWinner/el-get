@@ -42,10 +42,8 @@ package's recipe does not have either of these properties, a
 warning will be issued and this will return the same value it
 would have returned if FORCE-LOAD was nil."
   (el-get-with-package-lock package
-    (let* ((recipe (el-get-package-recipe package))
+    (let* ((recipe (el-get-package-recipe package t))
            (install-dir (el-get-package-install-directory package))
-           (_ (unless recipe
-                (el-get-error "Recipe not available for package %s" package)))
 
            ;; Get the required properties from the recipe
            (package-deps (el-get-recipe-dependencies recipe))
@@ -74,8 +72,6 @@ would have returned if FORCE-LOAD was nil."
            (after-load-body
             (el-get-normalize-recipe-init-form
              (el-get-recipe-get recipe :after-load)))
-           ;; TODO Recipe validation: need an after-load-target if we
-           ;; have an after-load form
            (after-load-target
             (el-get-package-after-load-target package))
            (suppress-warning
@@ -106,13 +102,20 @@ would have returned if FORCE-LOAD was nil."
               `(eval-after-load ,after-load-target
                  ,after-load-body)))
            (warning-form
-            (unless (or autoload-form feature-forms
-                        load-file-forms suppress-warning)
-              `(el-get-warning-message
-                "Recipe for package %s has no autoloads, features, or load files. Initializing it may have no effect."
-                ,package)
-              )))
-      ;; TODO load eager if there is no autoloads
+            (unless suppress-warning
+              (cond
+               ((not (or autoload-form feature-forms
+                         load-file-forms))
+                `(el-get-warning-message
+                  "Recipe for package %s has no autoloads, features, or load files. Initializing it may have no effect."
+                  ,package))
+               ((and force-load
+                     (null load-files)
+                     (null features))
+                `(el-get-warning-message
+                  "Recipe for package %s has no features or load files, so it cannot be loaded eagerly."
+                  ,package))
+               (t nil)))))
       (remove-if
        #'null
        `(progn
