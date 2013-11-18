@@ -251,9 +251,10 @@ BUILDPROP should already be normalized."
   "Return the `:load-path' property of PACKAGE's recipe.
 
 This always returns a list."
-  (el-get-as-list
-   (el-get-recipe-get (el-get-package-recipe package t)
-                      :load-path)))
+  (el-get-recipe-get-list
+   (el-get-package-recipe package t)
+   :load-path))
+
 (defun el-get-package-dependencies (package)
   "Return dependencies for PACKAGE.
 

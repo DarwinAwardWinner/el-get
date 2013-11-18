@@ -62,6 +62,10 @@ auto-generated values."
       `(plist-get ,recipe ,prop)
     form))
 
+(defsubst el-get-recipe-get-list (recipe prop)
+  "This is `el-get-reicipe-get' wrapped with `el-get-as-list'."
+  (el-get-as-list (el-get-recipe-get recipe prop)))
+
 (defalias 'el-get-recipe-put 'plist-put
   "Set a property of a recipe.
 
