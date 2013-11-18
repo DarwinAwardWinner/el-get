@@ -137,6 +137,8 @@ The following keyword arguments are available:
 
 * :load-files - Subprocess will `load' each of these files before
   evaluating EXPR."
+  (when (null expr)
+    (el-get-warning-message "EXPR is null. This will do nothing."))
   (let* ((export-variables
           (append
            el-get-async-export-varlist
@@ -147,7 +149,10 @@ The following keyword arguments are available:
            for item in export-variables
            ;; Convert symbol to `(cons symbol (eval symbol))'
            if (symbolp item)
-           do (setq item (cons item (list 'quote (eval item))))
+           do (setq item
+                    (cons item
+                          (el-get-ensure-literal-or-quoted
+                           (eval item))))
            ;; Must be a cons
            unless (consp item)
            do (error "Unknown :export-variables variable specification: %S"
@@ -171,8 +176,8 @@ The following keyword arguments are available:
                 ;; Also, if EXPR is a symbol that names a function,
                 ;; then make sure we load the file that defines it.
                 (when (and (symbolp expr) (symbol-file expr))
-                  (add-to-list 'load-files (symbol-file expr)))
-            expr)))
+                  (add-to-list 'load-files (symbol-file expr))))
+            expr))
          (full-lambda
           `(lambda ()
              ;; Set load path before loading things

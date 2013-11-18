@@ -41,6 +41,14 @@ function call (i.e. an unquoted list).)"
      ;; non-nil.
      (functionp arg))))
 
+(defsubst el-get-ensure-literal-or-quoted (arg)
+  "If arg is not a literal or a quoted form, enquote and return it.
+
+If it is a literal or a quoted form, return it as is."
+  (if (el-get-arg-is-literal-or-quoted arg)
+      arg
+    (list 'quote arg)))
+
 (defsubst el-get-prin1-to-string (object)
   "Same as `prin1-to-string' but ignores `print-level' and `print-length'."
   (let (print-level print-length)
