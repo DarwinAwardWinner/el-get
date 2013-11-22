@@ -121,6 +121,7 @@
 (require-verbose 'el-get-autoload-generation)
 (require-verbose 'el-get-info)
 (require-verbose 'el-get-init)
+(require-verbose 'el-get-protect-package-files)
 
 (message "Finished loading El-get!")
 
