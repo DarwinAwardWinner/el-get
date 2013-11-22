@@ -113,6 +113,8 @@ autoload file will provide the feature `PACKAGE-autoloads'."
               "\n;;;; End contents of el-get package file %s\n\f\n"
               package)))))))
 
+;; TODO: Clarify the difference between "generate autoloads from FILE"
+;; and "Use FILE as an autoload file"
 (defun el-get-generate-package-autoloads (package)
   "Generate autoloads file for PACKAGE.
 
@@ -134,7 +136,8 @@ not."
   (el-get-with-package-lock package
     (let* ((recipe (el-get-package-recipe package t))
            (install-dir (el-get-package-install-directory package))
-           (autoload-prop (el-get-recipe-get recipe :autoloads))
+           (autoload-prop (or autoload-prop
+                              (el-get-recipe-get recipe :autoloads)))
            (lpath-prop (el-get-package-load-path package))
            (pkg-autoload-file (el-get-package-autoload-file package)))
       (cond
@@ -174,26 +177,36 @@ not."
         (if (el-get-same-files
              (expand-file-name autoload-prop install-dir)
              pkg-autoload-file)
-            (el-get-debug-message "Pre-built autoload file already has desired name.")
+            (el-get-debug-message
+             "Pre-built autoload file already has desired name: %s"
+             (file-relative-name pkg-autoload-file install-dir))
           (el-get-link-or-copy
-         (expand-file-name autoload-prop install-dir)
-         pkg-autoload-file))
+           (expand-file-name autoload-prop install-dir)
+           pkg-autoload-file))
         t)
        ;; `:autoloads (STRING STRING ...)' => Multiple pre-built
        ;; autoload files; Concatenate them into autoload file.
        ((el-get-list-of-strings-p autoload-prop)
-        (el-get-debug-message
-         "Collecing pre-built autoload files for package %s: %S"
-         package autoload-prop)
-        (when (file-exists-p pkg-autoload-file)
-          (el-get-warning-message
-           "Overwriting pre-built package-autoload file for %s: %S"
-           package (file-relative-name pkg-autoload-file install-dir)))
-        ;; TODO Check for autoloads file in autoload-prop
-        (el-get-cat-files-into-autoload-file package autoload-prop)
-        t)
-       (t (el-get-error "Unrecognized :autoloads property: %S"
-                        autoload-prop))))))
+        ;; Make sure autoload-prop doesn't contain the destination
+        (let ((autoload-prop-abs
+               (mapcar (lambda (f) (expand-file-name f install-dir)))))
+          (when (member* pkg-autoload-file autoload-prop-abs
+                         :test #'el-get-same-files)
+            (el-get-warning-message
+             "Autoloads property for package %s contains the destination file for generated autoloads (%s). This file will be overwritten with the combined contents of all specified autoload files. This operation is not idempotent. The recipe probably needs to be fixed."
+             package (file-relative-name pkg-autoload-file install-dir)))
+          (el-get-debug-message
+           "Collecing pre-built autoload files for package %s: %S"
+           package autoload-prop)
+          (when (file-exists-p pkg-autoload-file)
+            (el-get-warning-message
+             "Overwriting existing autoload file for %s: %S"
+             package (file-relative-name pkg-autoload-file install-dir)))
+          ;; TODO Check for autoloads file in autoload-prop
+          (el-get-cat-files-into-autoload-file package autoload-prop)
+          t)
+        (t (el-get-error "Unrecognized :autoloads property: %S"
+                         autoload-prop))))))
 
 (provide 'el-get-autoload-generation)
 ;;; el-get-autoload-generation.el ends here

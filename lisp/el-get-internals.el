@@ -650,23 +650,29 @@ create a hard link instead of a symbolic link.
 This function should be used when a copy is ok, but a link is
 preferred in order to save disk space.
 
-DEST is *ALWAYS* unconditionally overwritten."
-  (condition-case nil
-      ;; Try to link
-      (if hardlink
-          (add-name-to-file source dest t)
-        (make-symbolic-link
-         ;; Use absolute or relative path
-         (if absolute
-             (expand-file-name source)
-           (file-relative-name
-            (expand-file-name source)
-            (file-name-directory
-             (expand-file-name dest))))
-         dest t))
-    ;; On error, copy instead
-    (error
-     (copy-file source dest t))))
+DEST is *ALWAYS* unconditionally overwritten.
+
+If SOURCE and DEST point to the same location, nothing is done
+and a warning is issued."
+  (if (el-get-same-files source dest)
+      (el-get-warning-message "Not linking path to itself: %s"
+                              (expand-file-name source))
+    (condition-case nil
+        ;; Try to link
+        (if hardlink
+            (add-name-to-file source dest t)
+          (make-symbolic-link
+           ;; Use absolute or relative path
+           (if absolute
+               (expand-file-name source)
+             (file-relative-name
+              (expand-file-name source)
+              (file-name-directory
+               (expand-file-name dest))))
+           dest t))
+      ;; On error, copy instead
+      (error
+       (copy-file source dest t)))))
 
 (defsubst el-get-file-basename-p (filename)
   "Return non-nil if FILENAME contains no directory separators.
