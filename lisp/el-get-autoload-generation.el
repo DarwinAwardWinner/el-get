@@ -136,8 +136,7 @@ not."
   (el-get-with-package-lock package
     (let* ((recipe (el-get-package-recipe package t))
            (install-dir (el-get-package-install-directory package))
-           (autoload-prop (or autoload-prop
-                              (el-get-recipe-get recipe :autoloads)))
+           (autoload-prop (el-get-recipe-get recipe :autoloads))
            (lpath-prop (el-get-package-load-path package))
            (pkg-autoload-file (el-get-package-autoload-file package)))
       (cond
@@ -206,7 +205,7 @@ not."
           (el-get-cat-files-into-autoload-file package autoload-prop)
           t)
         (t (el-get-error "Unrecognized :autoloads property: %S"
-                         autoload-prop))))))
+                         autoload-prop)))))))
 
 (provide 'el-get-autoload-generation)
 ;;; el-get-autoload-generation.el ends here
