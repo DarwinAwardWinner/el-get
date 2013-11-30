@@ -30,16 +30,15 @@
 (require 'el-get-package-internals)
 (require 'el-get-bytecomp)
 (require 'el-get-autoload-generation)
+(require 'el-get-dependencies)
 (require 'el-get-info)
 (require 'el-get-init)
 
 (defun el-get-remove-package (package)
   "Uninstall PACKAGE.
 
-This just removes PACKAGE's directory and all its contents.
-
-PACKAGE may also be a recipe, in which case `el-get-recipe-name'
-will be used to get name of the package to be removed."
+This just removes PACKAGE's directory and all its contents."
+  ;; TODO Check revdeps before removing.
   (when (listp package)
     (el-get-warning-message
      "Recipe passed to `el-get-remove' instead of package name: %S"
@@ -76,12 +75,16 @@ did. Possible values are `fetched' or `skipped'."
                          (el-get-package-status package)))))))
 
 (defun el-get-build-package (package)
-  "Build PACKAGE."
+  "Build PACKAGE.
+
+If dependencies of PACKAGE are not yet installed, this throws an
+error."
   (el-get-warn-unless-in-subprocess 'el-get-build-package)
   (el-get-with-package-lock package
     (el-get-debug-message "Building package %s" package)
     (let* ((status (el-get-package-status package))
            (recipe (el-get-package-recipe package))
+           (deps (el-get-recipe-dependencies recipe))
            (buildprop (el-get-normalize-build-property
                        (el-get-recipe-get recipe :build)))
            (install-dir (el-get-package-install-directory package)))
@@ -93,6 +96,15 @@ did. Possible values are `fetched' or `skipped'."
                                  package))
         (fetched (ignore))
         (otherwise (el-ger-error "Invalid status: %S" status)))
+      ;; Check dependencies installed
+      (let ((uninstalled-deps
+             (remove-if (apply-partially #'eq 'installed)
+                        deps :key #'el-get-package-status)))
+        (when uninstalled-deps
+          (el-get-error
+           "Cannot build package %s because dependencies are not installed: %S"
+           package missing-deps)))
+      ;; Do the build
       (el-get-do-build buildprop package)
       (el-get-byte-compile-package package)
       (el-get-generate-package-autoloads package)
