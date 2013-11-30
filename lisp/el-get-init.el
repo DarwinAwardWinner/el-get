@@ -30,6 +30,13 @@
 (require 'el-get-package-internals)
 (require 'el-get-dependencies)
 
+(defvar el-get-initialized-packages nil
+  "List of packages that el-get has successfully initialized")
+
+(defsubst el-get-package-initialized-p (package)
+  "Returns non-nil if PACKAGE has been initialized by el-get"
+  (memq package el-get-initialized-packages))
+
 (defsubst el-get-package-init-file (package)
   (el-get-expand-package-file-name "init.el" package))
 
@@ -88,12 +95,16 @@ for the existence of certain files in the package directory."
                  ,after-load-body)))
            (suppress-warning
             ;; TODO Make sure e.g. builtin/null type sets this property
-            (el-get-recipe-get recipe :no-warn-missing-init))
+            (el-get-recipe-get recipe :allow-empty-init))
 
            ;; Now set up individual forms. This is done here to avoid
            ;; the complexity of nested backquotes.
-           (load-deps-form
+           (load-dep-forms
             (when package-deps
+              (loop for dep in package-deps
+                    collect
+                    `(when (not (memq ,dep el-get-initialized-packages))
+                       (load-file ,(el-get-package-init-file dep))))
               `(el-get-error "TODO init deps")))
            (load-path-form
             (when package-load-path-abs
@@ -137,7 +148,7 @@ for the existence of certain files in the package directory."
       (remove-if
        #'null
        `(progn
-          ,load-deps-form
+          ,@load-dep-forms
           ,warning-form
           ,load-path-form
           ,autoload-form
