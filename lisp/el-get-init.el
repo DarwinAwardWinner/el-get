@@ -149,6 +149,7 @@ for the existence of certain files in the package directory."
        #'null
        `(progn
           ,@load-dep-forms
+          (message "el-get: Initializing package %s" ',package)
           ,warning-form
           ,load-path-form
           ,autoload-form
@@ -156,7 +157,8 @@ for the existence of certain files in the package directory."
           ,after-load-form
           ,@load-file-forms
           ,@feature-forms
-          ,after-init-form)))))
+          ,after-init-form
+          (message "el-get: Finshed initializing package %s" ',package))))))
 
 (defsubst el-get-build-package-init-file (package &optional test)
   "Generate the init file for PACKAGE.

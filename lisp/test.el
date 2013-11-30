@@ -143,9 +143,11 @@
                               :url
                               "https://gist.github.com/DarwinAwardWinner/5882719/raw/ed9046cccaa78633793a407efd1888c7d4667ae4/emacs-osx-pseudo-daemon.el"
                               :file-name "osx-pseudo-daemon.el"
-                              :autoloads t))
+                              :autoloads t
+                              :depends (d e ack)))
 (el-get-build-package 'osx-pseudo-daemon)
-
+(el-get-init-package 'osx-pseudo-daemon)
+(assert (fboundp 'frame-is-last-ns-frame))
 
 (condition-case err
     (el-get-fetch-package
