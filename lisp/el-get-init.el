@@ -25,9 +25,13 @@
 ;;; Code:
 
 (require 'el-get-internals)
+(require 'el-get-async)
 (require 'el-get-recipe-manip)
 (require 'el-get-package-internals)
 (require 'el-get-dependencies)
+
+(defsubst el-get-package-init-file (package)
+  (el-get-expand-package-file-name "init.el" package))
 
 (defun el-get-package-init-form (package &optional force-load)
   "Return a lisp form to init PACKAGE.
@@ -40,7 +44,11 @@ possible, skip autoloads and simply `require' or `load' the
 package's `:feature'/`:load' properties as appropriate. If the
 package's recipe does not have either of these properties, a
 warning will be issued and this will return the same value it
-would have returned if FORCE-LOAD was nil."
+would have returned if FORCE-LOAD was nil.
+
+This function should only be called on packages that are fully
+built (other than generation of their init file), since it checks
+for the existence of certain files in the package directory."
   (el-get-with-package-lock package
     (let* ((recipe (el-get-package-recipe package t))
            (install-dir (el-get-package-install-directory package))
@@ -74,6 +82,10 @@ would have returned if FORCE-LOAD was nil."
              (el-get-recipe-get recipe :after-load)))
            (after-load-target
             (el-get-package-after-load-target package))
+           (after-load-form
+            (when after-load-body
+              `(eval-after-load ,after-load-target
+                 ,after-load-body)))
            (suppress-warning
             ;; TODO Make sure e.g. builtin/null type sets this property
             (el-get-recipe-get recipe :no-warn-missing-init))
@@ -106,15 +118,21 @@ would have returned if FORCE-LOAD was nil."
               (cond
                ((not (or autoload-form feature-forms
                          load-file-forms))
-                `(el-get-warning-message
-                  "Recipe for package %s has no autoloads, features, or load files. Initializing it may have no effect."
-                  ,package))
+                `(display-warning
+                  'el-get
+                  (format
+                   "Recipe for package %s has no autoloads, features, or load files. Initializing it may have no effect."
+                   ',package)
+                  :warning))
                ((and force-load
                      (null load-files)
                      (null features))
-                `(el-get-warning-message
-                  "Recipe for package %s has no features or load files, so it cannot be loaded eagerly."
-                  ,package))
+                `(display-warning
+                  'el-get
+                  (format
+                   "Recipe for package %s has no features or load files, so it cannot be loaded eagerly."
+                   ',package)
+                  :warning))
                (t nil)))))
       (remove-if
        #'null
@@ -129,13 +147,43 @@ would have returned if FORCE-LOAD was nil."
           ,@feature-forms
           ,after-init-form)))))
 
-(defsubst el-get-init-package (package &optional force-load)
+(defsubst el-get-build-package-init-file (package &optional test)
+  "Generate the init file for PACKAGE.
+
+This should only be called after all other package build steps
+have been completed.
+
+With optional arg TEST, evaluate the init form in a clean Emacs
+before writing the file. If the init form encounters an error,
+then the init file will not be written and an error will be
+raised"
+  (let ((init-form (el-get-package-init-form package))
+        (init-file (el-get-package-init-file package)))
+    (when test
+      (condition-case err
+          (el-get-sandbox-eval
+           `(progn
+              ,init-form
+              ;; Also test eager loading, which should test actually
+              ;; loading the package's files and the after-load form.
+              ,(el-get-package-init-form package :eager)))
+        (error
+         (el-get-error "Error in test evaluation of init form for package %s: %S"
+                       package err))))
+    (with-temp-buffer
+      (insert
+       (el-get-print-to-string init-form
+                               :pretty))
+      (write-file (el-get-package-init-file package)))))
+
+;; TODO check status is installed, load init file instead of
+;; generating init form
+(defsubst el-get-init-package (package)
   "Initialize PACKAGE."
-  (let ((init-form
-         (el-get-package-init-form package force-load)))
-    (el-get-debug-message "Init form for package %s: %S"
-                          package init-form)
-    (eval (el-get-package-init-form package force-load))))
+  (unless (eq (el-get-package-status package)
+              'installed)
+    (el-get-error "Cannot init non-installed package %s" package))
+  (load-file (el-get-package-init-file package)))
 
 (provide 'el-get-init)
 ;;; el-get-init.el ends here

@@ -121,6 +121,8 @@
 
 (el-get-build-package 'd)
 (el-get-build-package 'e)
+(assert (eq 'installed
+            (el-get-package-status 'e)))
 
 (el-get-fetch-package (el-get-read-recipe 'ack))
 (el-get-build-package 'ack)

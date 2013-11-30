@@ -31,6 +31,7 @@
 (require 'el-get-bytecomp)
 (require 'el-get-autoload-generation)
 (require 'el-get-info)
+(require 'el-get-init)
 
 (defun el-get-remove-package (package)
   "Uninstall PACKAGE.
@@ -77,8 +78,8 @@ did. Possible values are `fetched' or `skipped'."
 (defun el-get-build-package (package)
   "Build PACKAGE."
   (el-get-warn-unless-in-subprocess 'el-get-build-package)
-  (el-get-debug-message "Building package %s" package)
   (el-get-with-package-lock package
+    (el-get-debug-message "Building package %s" package)
     (let* ((status (el-get-package-status package))
            (recipe (el-get-package-recipe package))
            (buildprop (el-get-normalize-build-property
@@ -95,7 +96,11 @@ did. Possible values are `fetched' or `skipped'."
       (el-get-do-build buildprop package)
       (el-get-byte-compile-package package)
       (el-get-generate-package-autoloads package)
-      (el-get-build-package-info package))))
+      (el-get-build-package-info package)
+      (el-get-build-package-init-file package :test)
+      (el-get-write-status-plist package
+        `(:status installed
+          :recipe ,recipe)))))
 
 (provide 'el-get-package-manip)
 ;;; el-get-package-manip.el ends here
