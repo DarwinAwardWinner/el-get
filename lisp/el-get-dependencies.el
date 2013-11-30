@@ -96,7 +96,12 @@ not-yet-installed pacakges, you could use
   "Extract the full linear dependency list of START in GRAPH.
 
 The list is returned, and all the elements of that list are
-removed from GRAPH."
+removed from GRAPH. The returned list will *only* contain keys
+that were present in GRAPH. This means that if START is not
+present in GRAPH, the return value will not even contain
+START. This avoids duplicates when multiple packages have a
+common dependency, since each package can only be removed once
+from GRAPH."
   (let ((deps (gethash start graph :notfound)))
     (prog1
         (cond
