@@ -439,7 +439,9 @@ more informative."
 Note that if this returns a string, it is a file path relative to
 the package install directory, and should be expanded to an
 absolute path before use."
-  )
+  (or (car (el-get-recipe-get-list recipe :features))
+      (car (el-get-recipe-get-list recipe :load))))
+
 ;; TODO: Recipe documentation set/get
 
 (provide 'el-get-recipe-manip)
