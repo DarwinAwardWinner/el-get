@@ -101,7 +101,9 @@ are required for proper operation, such as proxy settings."
           (subproc-load-path load-path)
           require-features
           load-files
-          export-variables)
+          export-variables
+          timeout
+          (timeout-function #'ignore))
   "Eval EXPR asynchronously in a batch-mode Emacs subprocess.
 
 The returned value is the future returned by `async-start'. It
@@ -136,10 +138,32 @@ The following keyword arguments are available:
   features before evaluating EXPR.
 
 * :load-files - Subprocess will `load' each of these files before
-  evaluating EXPR."
+  evaluating EXPR.
+
+* :timeout - If the subprocess is still running at the end of the
+  timeout, it is killed. This may be a numeric value indicating a
+  number of seconds or a string which will be parsed into a
+  duration using `timer-duration'.
+
+* :timeout-function - If the subprocess is killed due to a
+  timeout, this function will be run. The function should accept
+  a single argument, the killed process. The function may also
+  accept zero arguments if it doesn't require access to the
+  process object."
+  ;; timer-duration, date-to-time
   (when (null expr)
     (el-get-warning-message "EXPR is null. This will do nothing."))
-  (let* ((export-variables
+  (let* ((timeout-seconds
+          (cond
+           ((numberp timeout) timeout)
+           ((stringp timeout) (timer-duration timeout))
+           ((null timeout) nil)
+           (t (el-get-error "Invalid timeout specification: %S" timeout))))
+         (timeout-human-readable
+          (cond
+           ((stringp timeout) timeout)
+           ((numberp timeout) (format "%s seconds" timeout))))
+         (export-variables
           (append
            el-get-async-export-varlist
            export-variables
@@ -189,7 +213,22 @@ The following keyword arguments are available:
              ,expr)))
     (el-get-debug-message "Executing function asynchronously: %s"
                           (el-get-print-to-string full-lambda t))
-    (async-start full-lambda finish-func)))
+    (let ((proc (async-start full-lambda finish-func)))
+      (when (and timeout-seconds
+                 (not (eq timeout-function #'ignore)))
+        (run-with-timer
+         timeout-seconds nil
+         `(lambda (process)
+            (kill-process process)
+            ;; This allows `timeout-function' to accept zero or one
+            ;; arguments.
+            (condition-case nil
+                (funcall ,timeout-function process)
+              (wrong-number-of-arguments
+               (funcall ,timeout-function))))
+         proc))
+      ;; Return the process
+      proc)))
 
 (defun el-get-sandbox-eval (expr &rest kwargs)
   "Eval EXPR in a clean batch-mode Emacs subprocess.
